@@ -1,0 +1,3382 @@
+openapi: 3.0.3
+info:
+  title: Farmacia API
+  description: |
+    API REST para la gestión de farmacia y medicamentos.
+    Permite gestionar:
+    - Catálogo de medicamentos (códigos de barra, nombres, precios, stock, recetas)
+    - Categorías de medicamentos (jerarquía padre-hijo)
+    - Ofertas y descuentos temporales
+    - Relación oferta-medicamento
+    - Autenticación de usuarios (JWT)
+    - Control de inventario y stock
+    
+    ## Autenticación
+    La mayoría de endpoints requieren un token JWT:
+    `Authorization: Bearer <token>`
+  version: 2.0.0
+  contact:
+    name: API Support
+    email: support@farmacia.com
+servers:
+  - url: http://localhost:3001
+    description: Servidor de desarrollo
+
+tags:
+  - name: Auth
+    description: Registro, login y perfil de usuario
+  - name: Medicamentos
+    description: Gestión de medicamentos e inventario
+  - name: Categorias
+    description: Gestión de categorías de medicamentos (jerarquía padre-hijo)
+  - name: Ofertas
+    description: Gestión de ofertas y descuentos
+  - name: Oferta-Medicamento
+    description: Relación entre ofertas y medicamentos
+  - name: Ubicaciones
+    description: Gestión de ubicaciones de inventario
+  - name: Lotes
+    description: Gestión de lotes y control FEFO
+  - name: Inventario
+    description: Control de existencias por lote y ubicación
+  - name: Proveedores
+    description: Gestión de proveedores
+  - name: Compras
+    description: Registro de compras y su detalle
+  - name: Recetas
+    description: Gestión de recetas médicas y su detalle
+  - name: Ventas
+    description: Ventas, pagos mixtos, comprobantes y anulación con descuento FEFO
+  - name: Alergias
+    description: Gestión de alergias y validación por cliente
+
+paths:
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Registrar usuario
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Usuario registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Obtener perfil
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil del usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: [Auth]
+      summary: Actualizar perfil
+      operationId: updateProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Perfil actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/medicamento:
+    get:
+      tags: [Medicamentos]
+      summary: Listar todos los medicamentos
+      operationId: listMedicamentos
+      responses:
+        '200':
+          description: Lista de medicamentos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Medicamento'
+    post:
+      tags: [Medicamentos]
+      summary: Crear medicamento
+      operationId: createMedicamento
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMedicamentoRequest'
+      responses:
+        '201':
+          description: Medicamento creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medicamento'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/medicamento/estadisticas:
+    get:
+      tags: [Medicamentos]
+      summary: Estadísticas del inventario
+      description: Obtiene total de medicamentos, valor del inventario, stock crítico, etc.
+      operationId: getEstadisticas
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Estadísticas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicamentoStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/medicamento/stock-critico:
+    get:
+      tags: [Medicamentos]
+      summary: Medicamentos con stock crítico
+      description: Retorna medicamentos con stock <= 10
+      operationId: getStockCritico
+      responses:
+        '200':
+          description: Lista de medicamentos con stock crítico
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Medicamento'
+
+  /api/medicamento/sin-stock:
+    get:
+      tags: [Medicamentos]
+      summary: Medicamentos agotados
+      description: Retorna medicamentos con stock = 0
+      operationId: getSinStock
+      responses:
+        '200':
+          description: Lista de medicamentos agotados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Medicamento'
+
+  /api/medicamento/con-oferta:
+    get:
+      tags: [Medicamentos]
+      summary: Medicamentos con oferta activa
+      description: Retorna medicamentos con ofertas vigentes (JOIN de 3 tablas)
+      operationId: getMedicamentosConOferta
+      responses:
+        '200':
+          description: Lista de medicamentos con oferta
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MedicamentoConOferta'
+
+  /api/medicamento/buscar:
+    get:
+      tags: [Medicamentos]
+      summary: Buscar medicamentos por nombre
+      operationId: buscarPorNombre
+      parameters:
+        - name: nombre
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Resultados de búsqueda
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Medicamento'
+
+  /api/medicamento/{id}:
+    get:
+      tags: [Medicamentos]
+      summary: Obtener medicamento por ID
+      operationId: getMedicamentoById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalle del medicamento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medicamento'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Medicamentos]
+      summary: Actualizar medicamento
+      operationId: updateMedicamento
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMedicamentoRequest'
+      responses:
+        '200':
+          description: Medicamento actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medicamento'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Medicamentos]
+      summary: Eliminar medicamento
+      operationId: deleteMedicamento
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Medicamento eliminado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/medicamento/{id}/stock:
+    patch:
+      tags: [Medicamentos]
+      summary: Actualizar stock incrementalmente
+      description: Suma o resta stock sin necesidad de enviar todo el objeto
+      operationId: actualizarStock
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cantidad, operacion]
+              properties:
+                cantidad:
+                  type: integer
+                  minimum: 1
+                operacion:
+                  type: string
+                  enum: [sumar, restar]
+      responses:
+        '200':
+          description: Stock actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medicamento'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/categoria:
+    get:
+      tags: [Categorias]
+      summary: Listar todas las categorías
+      description: Retorna todas las categorías con su categoría padre enriquecida
+      operationId: listCategorias
+      responses:
+        '200':
+          description: Lista de categorías
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Categoria'
+    post:
+      tags: [Categorias]
+      summary: Crear categoría
+      operationId: createCategoria
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoriaRequest'
+      responses:
+        '201':
+          description: Categoría creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Categoria'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/categoria/{id}:
+    get:
+      tags: [Categorias]
+      summary: Obtener categoría por ID
+      operationId: getCategoriaById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalle de categoría
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Categoria'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Categorias]
+      summary: Actualizar categoría
+      operationId: updateCategoria
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoriaRequest'
+      responses:
+        '200':
+          description: Categoría actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Categoria'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Categorias]
+      summary: Eliminar categoría
+      operationId: deleteCategoria
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Categoría eliminada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/oferta:
+    get:
+      tags: [Ofertas]
+      summary: Listar todas las ofertas
+      operationId: listOfertas
+      responses:
+        '200':
+          description: Lista de ofertas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Oferta'
+    post:
+      tags: [Ofertas]
+      summary: Crear oferta
+      operationId: createOferta
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOfertaRequest'
+      responses:
+        '201':
+          description: Oferta creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Oferta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/oferta/activas:
+    get:
+      tags: [Ofertas]
+      summary: Ofertas activas vigentes
+      description: Retorna ofertas con fecha_fin >= hoy
+      operationId: getOfertasActivas
+      responses:
+        '200':
+          description: Ofertas activas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Oferta'
+
+  /api/oferta/{id}:
+    get:
+      tags: [Ofertas]
+      summary: Obtener oferta por ID
+      operationId: getOfertaById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalle de oferta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Oferta'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Ofertas]
+      summary: Actualizar oferta
+      operationId: updateOferta
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOfertaRequest'
+      responses:
+        '200':
+          description: Oferta actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Oferta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: [Ofertas]
+      summary: Eliminar oferta
+      operationId: deleteOferta
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Oferta eliminada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/oferta/{id}/medicamentos:
+    get:
+      tags: [Oferta-Medicamento]
+      summary: Medicamentos de esta oferta
+      operationId: getMedicamentosDeOferta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de medicamentos con esta oferta
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MedicamentoConOferta'
+    post:
+      tags: [Oferta-Medicamento]
+      summary: Asignar medicamento a esta oferta
+      operationId: asignarMedicamentoAOferta
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idMedicamento]
+              properties:
+                idMedicamento:
+                  type: integer
+      responses:
+        '201':
+          description: Medicamento asignado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfertaMedicamento'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/oferta/{id}/medicamentos/{idMedicamento}:
+    delete:
+      tags: [Oferta-Medicamento]
+      summary: Eliminar relación oferta-medicamento
+      operationId: eliminarRelacionOfertaMedicamento
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: idMedicamento
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Relación eliminada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/oferta-medicamento/activas-con-productos:
+    get:
+      tags: [Oferta-Medicamento]
+      summary: Todas las ofertas activas con sus productos
+      description: Retorna todas las ofertas vigentes con sus medicamentos asignados y precios calculados
+      operationId: getOfertasActivasConProductos
+      responses:
+        '200':
+          description: Lista de ofertas activas con productos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    idOferta:
+                      type: integer
+                    nombreOferta:
+                      type: string
+                    descripcion:
+                      type: string
+                    porcentajeDescuento:
+                      type: number
+                    fechaInicio:
+                      type: string
+                      format: date-time
+                    fechaFin:
+                      type: string
+                      format: date-time
+                    productos:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/MedicamentoConOferta'
+
+  /api/ubicacion:
+    get:
+      tags: [Ubicaciones]
+      summary: Listar ubicaciones
+      operationId: listUbicaciones
+      responses:
+        '200':
+          description: Lista de ubicaciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+    post:
+      tags: [Ubicaciones]
+      summary: Crear ubicación
+      operationId: createUbicacion
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUbicacionRequest'
+      responses:
+        '201':
+          description: Ubicación creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ubicacion'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/ubicacion/{id}:
+    get:
+      tags: [Ubicaciones]
+      summary: Obtener ubicación
+      operationId: getUbicacionById
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Ubicación encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ubicacion'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Ubicaciones]
+      summary: Actualizar ubicación
+      operationId: updateUbicacion
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUbicacionRequest'
+      responses:
+        '200':
+          description: Ubicación actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ubicacion'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Ubicaciones]
+      summary: Eliminar ubicación
+      operationId: deleteUbicacion
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Ubicación eliminada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/lote:
+    get:
+      tags: [Lotes]
+      summary: Listar lotes
+      operationId: listLotes
+      responses:
+        '200':
+          description: Lista de lotes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lote'
+    post:
+      tags: [Lotes]
+      summary: Crear lote
+      operationId: createLote
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLoteRequest'
+      responses:
+        '201':
+          description: Lote creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lote'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/lote/proximos-vencer:
+    get:
+      tags: [Lotes]
+      summary: Lotes próximos a vencer (FEFO)
+      operationId: getLotesProximosVencer
+      parameters:
+        - $ref: '#/components/parameters/DiasQuery'
+      responses:
+        '200':
+          description: Lotes activos próximos a vencer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lote'
+
+  /api/lote/medicamento/{idMedicamento}:
+    get:
+      tags: [Lotes]
+      summary: Listar lotes por medicamento
+      operationId: getLotesByMedicamento
+      parameters:
+        - $ref: '#/components/parameters/IdMedicamentoParam'
+      responses:
+        '200':
+          description: Lotes del medicamento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lote'
+
+  /api/lote/{id}:
+    get:
+      tags: [Lotes]
+      summary: Obtener lote
+      operationId: getLoteById
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Lote encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lote'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Lotes]
+      summary: Actualizar lote
+      operationId: updateLote
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLoteRequest'
+      responses:
+        '200':
+          description: Lote actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lote'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Lotes]
+      summary: Eliminar lote
+      operationId: deleteLote
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Lote eliminado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/lote/{id}/estado:
+    patch:
+      tags: [Lotes]
+      summary: Cambiar estado del lote
+      operationId: changeLoteEstado
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiarEstadoLoteRequest'
+      responses:
+        '200':
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lote'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/inventario:
+    get:
+      tags: [Inventario]
+      summary: Listar inventario
+      operationId: listInventario
+      responses:
+        '200':
+          description: Lista de registros de inventario
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Inventario'
+    post:
+      tags: [Inventario]
+      summary: Crear registro de inventario
+      operationId: createInventario
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInventarioRequest'
+      responses:
+        '201':
+          description: Inventario creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inventario'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/inventario/stock-critico:
+    get:
+      tags: [Inventario]
+      summary: Inventario con stock crítico
+      description: Registros cuya cantidad actual es menor o igual al stock mínimo
+      operationId: getInventarioStockCritico
+      responses:
+        '200':
+          description: Lista de inventario con stock crítico
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Inventario'
+
+  /api/inventario/lote/{idLote}:
+    get:
+      tags: [Inventario]
+      summary: Listar inventario por lote
+      operationId: getInventarioByLote
+      parameters:
+        - $ref: '#/components/parameters/IdLoteParam'
+      responses:
+        '200':
+          description: Inventario del lote
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Inventario'
+
+  /api/inventario/ubicacion/{idUbicacion}:
+    get:
+      tags: [Inventario]
+      summary: Listar inventario por ubicación
+      operationId: getInventarioByUbicacion
+      parameters:
+        - $ref: '#/components/parameters/IdUbicacionParam'
+      responses:
+        '200':
+          description: Inventario de la ubicación
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Inventario'
+
+  /api/inventario/{id}:
+    get:
+      tags: [Inventario]
+      summary: Obtener registro de inventario
+      operationId: getInventarioById
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Registro encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inventario'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Inventario]
+      summary: Actualizar registro de inventario
+      operationId: updateInventario
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateInventarioRequest'
+      responses:
+        '200':
+          description: Inventario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inventario'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Inventario]
+      summary: Eliminar registro de inventario
+      operationId: deleteInventario
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Inventario eliminado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/proveedor:
+    get:
+      tags: [Proveedores]
+      summary: Listar proveedores
+      operationId: listProveedores
+      responses:
+        '200':
+          description: Lista de proveedores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Proveedor'
+    post:
+      tags: [Proveedores]
+      summary: Crear proveedor
+      operationId: createProveedor
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProveedorRequest'
+      responses:
+        '201':
+          description: Proveedor creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Proveedor'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/proveedor/{id}:
+    get:
+      tags: [Proveedores]
+      summary: Obtener proveedor
+      operationId: getProveedorById
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Proveedor encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Proveedor'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Proveedores]
+      summary: Actualizar proveedor
+      operationId: updateProveedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProveedorRequest'
+      responses:
+        '200':
+          description: Proveedor actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Proveedor'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Proveedores]
+      summary: Eliminar proveedor
+      operationId: deleteProveedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Proveedor eliminado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/compra:
+    get:
+      tags: [Compras]
+      summary: Listar compras
+      operationId: listCompras
+      responses:
+        '200':
+          description: Lista de compras
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Compra'
+    post:
+      tags: [Compras]
+      summary: Crear compra con detalle
+      description: El total se calcula automáticamente desde los detalles. El número de factura debe ser único.
+      operationId: createCompra
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCompraRequest'
+      responses:
+        '201':
+          description: Compra creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Compra'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/compra/proveedor/{idProveedor}:
+    get:
+      tags: [Compras]
+      summary: Listar compras por proveedor
+      operationId: getComprasByProveedor
+      parameters:
+        - $ref: '#/components/parameters/IdProveedorParam'
+      responses:
+        '200':
+          description: Compras del proveedor
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Compra'
+
+  /api/compra/{id}:
+    get:
+      tags: [Compras]
+      summary: Obtener compra con su detalle
+      operationId: getCompraById
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Compra encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Compra'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Compras]
+      summary: Actualizar compra
+      operationId: updateCompra
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCompraRequest'
+      responses:
+        '200':
+          description: Compra actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Compra'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Compras]
+      summary: Eliminar compra
+      operationId: deleteCompra
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Compra eliminada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/compra/{id}/estado:
+    patch:
+      tags: [Compras]
+      summary: Cambiar estado de la compra
+      description: Al pasar a "completada" se genera/actualiza la entrada en inventario.
+      operationId: changeCompraEstado
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiarEstadoCompraRequest'
+      responses:
+        '200':
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Compra'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/receta:
+    get:
+      tags: [Recetas]
+      summary: Listar recetas
+      operationId: listRecetas
+      responses:
+        '200':
+          description: Lista de recetas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Receta'
+    post:
+      tags: [Recetas]
+      summary: Crear receta con detalle
+      description: El número de receta debe ser único y la fecha de vencimiento debe ser mayor o igual a la de emisión.
+      operationId: createReceta
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRecetaRequest'
+      responses:
+        '201':
+          description: Receta creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/receta/vigentes:
+    get:
+      tags: [Recetas]
+      summary: Listar recetas vigentes
+      description: Recetas con estado "vigente" cuya fecha de vencimiento no ha pasado
+      operationId: listRecetasVigentes
+      responses:
+        '200':
+          description: Recetas vigentes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Receta'
+
+  /api/receta/cliente/{idCliente}:
+    get:
+      tags: [Recetas]
+      summary: Listar recetas por cliente
+      operationId: getRecetasByCliente
+      parameters:
+        - $ref: '#/components/parameters/IdClienteParam'
+      responses:
+        '200':
+          description: Recetas del cliente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Receta'
+
+  /api/receta/{id}:
+    get:
+      tags: [Recetas]
+      summary: Obtener receta con su detalle
+      operationId: getRecetaById
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Receta encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receta'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Recetas]
+      summary: Actualizar receta
+      operationId: updateReceta
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRecetaRequest'
+      responses:
+        '200':
+          description: Receta actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Recetas]
+      summary: Eliminar receta
+      operationId: deleteReceta
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Receta eliminada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/receta/{id}/estado:
+    patch:
+      tags: [Recetas]
+      summary: Cambiar estado de la receta
+      operationId: changeRecetaEstado
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiarEstadoRecetaRequest'
+      responses:
+        '200':
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/venta:
+    get:
+      tags: [Ventas]
+      summary: Listar ventas
+      operationId: listVentas
+      parameters:
+        - name: estado
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pendiente, completada, anulada, devuelta_parcial, devuelta_total]
+        - name: idCliente
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: idEmpleado
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: desde
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: hasta
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Lista de ventas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Venta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+    post:
+      tags: [Ventas]
+      summary: Crear venta con detalle y pagos
+      description: |
+        Los lotes se asignan automáticamente por FEFO. El total se calcula desde los
+        detalles. Si el estado inicial es `completada`, los pagos confirmados deben
+        cubrir el total. Se validan receta, alergias, stock y método de pago.
+      operationId: createVenta
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVentaRequest'
+      responses:
+        '201':
+          description: Venta creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/venta/metodos-pago:
+    get:
+      tags: [Ventas]
+      summary: Listar métodos de pago activos
+      operationId: listMetodosPago
+      responses:
+        '200':
+          description: Métodos de pago disponibles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MetodoPago'
+
+  /api/venta/cliente/{idCliente}:
+    get:
+      tags: [Ventas]
+      summary: Listar ventas de un cliente
+      operationId: getVentasByCliente
+      parameters:
+        - $ref: '#/components/parameters/IdClienteParam'
+      responses:
+        '200':
+          description: Ventas del cliente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Venta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/venta/{id}:
+    get:
+      tags: [Ventas]
+      summary: Obtener venta con detalle y pagos
+      operationId: getVentaById
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Venta encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/venta/{id}/comprobante:
+    get:
+      tags: [Ventas]
+      summary: Obtener comprobante de venta
+      operationId: getComprobanteVenta
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Comprobante de la venta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComprobanteVenta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/venta/{id}/pagos:
+    post:
+      tags: [Ventas]
+      summary: Registrar pago de una venta
+      description: Si con el pago confirmado se cubre el total, la venta pasa a completada.
+      operationId: addPagoVenta
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PagoInput'
+      responses:
+        '201':
+          description: Pago registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/venta/{id}/pagos/{idPago}/anular:
+    patch:
+      tags: [Ventas]
+      summary: Anular un pago
+      description: Si la venta estaba completada y deja de estar pagada, vuelve a pendiente.
+      operationId: anularPagoVenta
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+        - $ref: '#/components/parameters/IdPagoParam'
+      responses:
+        '200':
+          description: Pago anulado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/venta/{id}/anular:
+    patch:
+      tags: [Ventas]
+      summary: Anular una venta
+      description: Anula pagos, restaura el stock en los lotes y marca la venta como anulada.
+      operationId: anularVenta
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnularVentaRequest'
+      responses:
+        '200':
+          description: Venta anulada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/alergia:
+    get:
+      tags: [Alergias]
+      summary: Listar alergias
+      operationId: listAlergias
+      responses:
+        '200':
+          description: Lista de alergias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alergia'
+    post:
+      tags: [Alergias]
+      summary: Crear alergia
+      operationId: createAlergia
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlergiaRequest'
+      responses:
+        '201':
+          description: Alergia creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alergia'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/alergia/cliente:
+    post:
+      tags: [Alergias]
+      summary: Asignar alergia a un cliente
+      operationId: asignarAlergiaCliente
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AsignarAlergiaRequest'
+      responses:
+        '201':
+          description: Alergia asignada al cliente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClienteAlergia'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/alergia/cliente/{idCliente}:
+    get:
+      tags: [Alergias]
+      summary: Listar alergias de un cliente
+      operationId: getAlergiasByCliente
+      parameters:
+        - $ref: '#/components/parameters/IdClienteParam'
+      responses:
+        '200':
+          description: Alergias del cliente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClienteAlergia'
+
+  /api/alergia/cliente/{idCliente}/{idAlergia}:
+    delete:
+      tags: [Alergias]
+      summary: Quitar alergia a un cliente
+      operationId: quitarAlergiaCliente
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdClienteParam'
+        - $ref: '#/components/parameters/IdAlergiaParam'
+      responses:
+        '204':
+          description: Alergia quitada del cliente
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/alergia/validar/{idCliente}/{idMedicamento}:
+    get:
+      tags: [Alergias]
+      summary: Validar si un cliente es alérgico a un medicamento
+      description: Cruza cliente_alergia con alergia_principio_activo y medicamento_principio_activo
+      operationId: validarAlergia
+      parameters:
+        - $ref: '#/components/parameters/IdClienteParam'
+        - $ref: '#/components/parameters/IdMedicamentoParam'
+      responses:
+        '200':
+          description: Resultado de la validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidacionAlergia'
+
+  /api/alergia/{id}:
+    get:
+      tags: [Alergias]
+      summary: Obtener alergia
+      operationId: getAlergiaById
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Alergia encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alergia'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Alergias]
+      summary: Actualizar alergia
+      operationId: updateAlergia
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAlergiaRequest'
+      responses:
+        '200':
+          description: Alergia actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alergia'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Alergias]
+      summary: Eliminar alergia
+      operationId: deleteAlergia
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Alergia eliminada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    IdMedicamentoParam:
+      name: idMedicamento
+      in: path
+      required: true
+      schema:
+        type: integer
+    IdLoteParam:
+      name: idLote
+      in: path
+      required: true
+      schema:
+        type: integer
+    IdUbicacionParam:
+      name: idUbicacion
+      in: path
+      required: true
+      schema:
+        type: integer
+    IdProveedorParam:
+      name: idProveedor
+      in: path
+      required: true
+      schema:
+        type: integer
+    IdClienteParam:
+      name: idCliente
+      in: path
+      required: true
+      schema:
+        type: integer
+    IdPagoParam:
+      name: idPago
+      in: path
+      required: true
+      schema:
+        type: integer
+    IdAlergiaParam:
+      name: idAlergia
+      in: path
+      required: true
+      schema:
+        type: integer
+    DiasQuery:
+      name: dias
+      in: query
+      required: false
+      description: Cantidad de días para considerar "próximo a vencer" (por defecto 30)
+      schema:
+        type: integer
+        default: 30
+
+  responses:
+    ValidationError:
+      description: Error de validación
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: No autenticado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Conflicto (recurso duplicado)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Sin permisos para realizar la acción
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, user]
+        createdAt:
+          type: string
+          format: date-time
+
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, user]
+          default: user
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          description: JWT válido por 7 días
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+
+    Medicamento:
+      type: object
+      properties:
+        idMedicamento:
+          type: integer
+        codigoBarras:
+          type: string
+        nombreComercial:
+          type: string
+        nombreGenerico:
+          type: string
+        idCategoria:
+          type: integer
+        tipoProducto:
+          type: string
+        presentacion:
+          type: string
+        precioCompra:
+          type: number
+          format: float
+        precioVenta:
+          type: number
+          format: float
+        stock:
+          type: integer
+        requiereReceta:
+          type: boolean
+        activo:
+          type: boolean
+        imagen:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateMedicamentoRequest:
+      type: object
+      required: [nombreComercial]
+      properties:
+        codigoBarras:
+          type: string
+        nombreComercial:
+          type: string
+        nombreGenerico:
+          type: string
+        idCategoria:
+          type: integer
+        tipoProducto:
+          type: string
+        presentacion:
+          type: string
+        precioCompra:
+          type: number
+          format: float
+        precioVenta:
+          type: number
+          format: float
+        stock:
+          type: integer
+          default: 0
+        requiereReceta:
+          type: boolean
+          default: false
+        activo:
+          type: boolean
+          default: true
+        imagen:
+          type: string
+          format: uri
+
+    UpdateMedicamentoRequest:
+      type: object
+      properties:
+        codigoBarras:
+          type: string
+        nombreComercial:
+          type: string
+        nombreGenerico:
+          type: string
+        idCategoria:
+          type: integer
+        tipoProducto:
+          type: string
+        presentacion:
+          type: string
+        precioCompra:
+          type: number
+        precioVenta:
+          type: number
+        stock:
+          type: integer
+        requiereReceta:
+          type: boolean
+        activo:
+          type: boolean
+        imagen:
+          type: string
+          format: uri
+
+    MedicamentoStats:
+      type: object
+      properties:
+        totalMedicamentos:
+          type: integer
+        totalUnidadesInventario:
+          type: integer
+        valorTotalInventario:
+          type: number
+        totalRequiereReceta:
+          type: integer
+        totalStockCritico:
+          type: integer
+        totalAgotados:
+          type: integer
+
+    MedicamentoConOferta:
+      allOf:
+        - $ref: '#/components/schemas/Medicamento'
+        - type: object
+          properties:
+            precioOriginal:
+              type: number
+            porcentajeDescuento:
+              type: number
+            precioConDescuento:
+              type: number
+            nombreOferta:
+              type: string
+            vencimientoOferta:
+              type: string
+              format: date
+
+    Categoria:
+      type: object
+      properties:
+        id_categoria:
+          type: integer
+        nombre:
+          type: string
+        descripcion:
+          type: string
+        tipo_categoria:
+          type: string
+          enum: [medicamento, parafarmacia, dermocosmetica, higiene, salud, nutricion, bebe, general]
+        tipo_enfermedad:
+          type: string
+          enum: [cronica, estacional, aguda, bienestar, prevencion, cuidado_personal, infantil, nutricion, general, no_aplica]
+        id_categoria_padre:
+          type: integer
+          nullable: true
+        nombre_categoria_padre:
+          type: string
+          description: Nombre enriquecido de la categoría padre
+        fecha_creacion:
+          type: string
+          format: date-time
+
+    CreateCategoriaRequest:
+      type: object
+      required: [nombre]
+      properties:
+        nombre:
+          type: string
+          description: Nombre único de la categoría
+        descripcion:
+          type: string
+        tipo_categoria:
+          type: string
+          enum: [medicamento, parafarmacia, dermocosmetica, higiene, salud, nutricion, bebe, general]
+          default: medicamento
+        tipo_enfermedad:
+          type: string
+          enum: [cronica, estacional, aguda, bienestar, prevencion, cuidado_personal, infantil, nutricion, general, no_aplica]
+          default: general
+        id_categoria_padre:
+          type: integer
+          description: ID de la categoría padre (para subcategorías)
+
+    UpdateCategoriaRequest:
+      type: object
+      properties:
+        nombre:
+          type: string
+        descripcion:
+          type: string
+        tipo_categoria:
+          type: string
+          enum: [medicamento, parafarmacia, dermocosmetica, higiene, salud, nutricion, bebe, general]
+        tipo_enfermedad:
+          type: string
+          enum: [cronica, estacional, aguda, bienestar, prevencion, cuidado_personal, infantil, nutricion, general, no_aplica]
+        id_categoria_padre:
+          type: integer
+          nullable: true
+
+    Oferta:
+      type: object
+      properties:
+        idOferta:
+          type: integer
+        nombreOferta:
+          type: string
+        descripcion:
+          type: string
+        porcentajeDescuento:
+          type: number
+          format: float
+        fechaInicio:
+          type: string
+          format: date-time
+        fechaFin:
+          type: string
+          format: date-time
+        activo:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateOfertaRequest:
+      type: object
+      required: [nombreOferta, porcentajeDescuento, fechaInicio, fechaFin]
+      properties:
+        nombreOferta:
+          type: string
+        descripcion:
+          type: string
+        porcentajeDescuento:
+          type: number
+          minimum: 0
+          maximum: 100
+        fechaInicio:
+          type: string
+          format: date-time
+        fechaFin:
+          type: string
+          format: date-time
+        activo:
+          type: boolean
+          default: true
+
+    UpdateOfertaRequest:
+      type: object
+      properties:
+        nombreOferta:
+          type: string
+        descripcion:
+          type: string
+        porcentajeDescuento:
+          type: number
+          minimum: 0
+          maximum: 100
+        fechaInicio:
+          type: string
+          format: date-time
+        fechaFin:
+          type: string
+          format: date-time
+        activo:
+          type: boolean
+
+    OfertaMedicamento:
+      type: object
+      properties:
+        idOfertaMedicamento:
+          type: integer
+        idOferta:
+          type: integer
+        idMedicamento:
+          type: integer
+        fechaAsignacion:
+          type: string
+          format: date-time
+        createdBy:
+          type: integer
+
+    Ubicacion:
+      type: object
+      properties:
+        idUbicacion:
+          type: integer
+        idSucursal:
+          type: integer
+        sucursal:
+          type: string
+        nombre:
+          type: string
+        pasillo:
+          type: string
+          nullable: true
+        estante:
+          type: string
+          nullable: true
+        temperaturaRecomendada:
+          type: string
+          nullable: true
+        activa:
+          type: boolean
+        fechaCreacion:
+          type: string
+          format: date-time
+
+    CreateUbicacionRequest:
+      type: object
+      required: [idSucursal, nombre]
+      properties:
+        idSucursal:
+          type: integer
+        nombre:
+          type: string
+        pasillo:
+          type: string
+        estante:
+          type: string
+        temperaturaRecomendada:
+          type: string
+        activa:
+          type: boolean
+          default: true
+
+    UpdateUbicacionRequest:
+      type: object
+      properties:
+        idSucursal:
+          type: integer
+        nombre:
+          type: string
+        pasillo:
+          type: string
+          nullable: true
+        estante:
+          type: string
+          nullable: true
+        temperaturaRecomendada:
+          type: string
+          nullable: true
+        activa:
+          type: boolean
+
+    Lote:
+      type: object
+      properties:
+        idLote:
+          type: integer
+        idMedicamento:
+          type: integer
+        medicamento:
+          type: string
+        idProveedor:
+          type: integer
+          nullable: true
+        proveedor:
+          type: string
+          nullable: true
+        numeroLote:
+          type: string
+        fechaFabricacion:
+          type: string
+          format: date
+        fechaVencimiento:
+          type: string
+          format: date
+        cantidadInicial:
+          type: integer
+        estado:
+          type: string
+          enum: [activo, agotado, cuarentena, vencido, devuelto]
+        fechaIngreso:
+          type: string
+          format: date-time
+        observaciones:
+          type: string
+          nullable: true
+
+    CreateLoteRequest:
+      type: object
+      required: [idMedicamento, numeroLote, fechaFabricacion, fechaVencimiento, cantidadInicial]
+      properties:
+        idMedicamento:
+          type: integer
+        idProveedor:
+          type: integer
+          nullable: true
+        numeroLote:
+          type: string
+        fechaFabricacion:
+          type: string
+          format: date
+        fechaVencimiento:
+          type: string
+          format: date
+        cantidadInicial:
+          type: integer
+          minimum: 1
+        estado:
+          type: string
+          enum: [activo, agotado, cuarentena, vencido, devuelto]
+          default: activo
+        observaciones:
+          type: string
+
+    UpdateLoteRequest:
+      type: object
+      properties:
+        idMedicamento:
+          type: integer
+        idProveedor:
+          type: integer
+          nullable: true
+        numeroLote:
+          type: string
+        fechaFabricacion:
+          type: string
+          format: date
+        fechaVencimiento:
+          type: string
+          format: date
+        cantidadInicial:
+          type: integer
+          minimum: 1
+        estado:
+          type: string
+          enum: [activo, agotado, cuarentena, vencido, devuelto]
+        observaciones:
+          type: string
+
+    CambiarEstadoLoteRequest:
+      type: object
+      required: [estado]
+      properties:
+        estado:
+          type: string
+          enum: [activo, agotado, cuarentena, vencido, devuelto]
+
+    Inventario:
+      type: object
+      properties:
+        idInventario:
+          type: integer
+        idLote:
+          type: integer
+        numeroLote:
+          type: string
+        idMedicamento:
+          type: integer
+        medicamento:
+          type: string
+        idUbicacion:
+          type: integer
+        ubicacion:
+          type: string
+        cantidadActual:
+          type: integer
+        stockMinimo:
+          type: integer
+        stockMaximo:
+          type: integer
+          nullable: true
+        fechaActualizacion:
+          type: string
+          format: date-time
+
+    CreateInventarioRequest:
+      type: object
+      required: [idLote, idUbicacion]
+      properties:
+        idLote:
+          type: integer
+        idUbicacion:
+          type: integer
+        cantidadActual:
+          type: integer
+          minimum: 0
+          default: 0
+        stockMinimo:
+          type: integer
+          minimum: 0
+          default: 0
+        stockMaximo:
+          type: integer
+          nullable: true
+
+    UpdateInventarioRequest:
+      type: object
+      properties:
+        idLote:
+          type: integer
+        idUbicacion:
+          type: integer
+        cantidadActual:
+          type: integer
+          minimum: 0
+        stockMinimo:
+          type: integer
+          minimum: 0
+        stockMaximo:
+          type: integer
+          nullable: true
+
+    Proveedor:
+      type: object
+      properties:
+        idProveedor:
+          type: integer
+        nombreEmpresa:
+          type: string
+        contactoNombre:
+          type: string
+        contactoTelefono:
+          type: string
+        contactoEmail:
+          type: string
+          nullable: true
+        aceptaDevoluciones:
+          type: boolean
+        frecuenciaVisita:
+          type: string
+        fechaRegistro:
+          type: string
+          format: date-time
+        activo:
+          type: boolean
+
+    CreateProveedorRequest:
+      type: object
+      required: [nombreEmpresa, contactoNombre, contactoTelefono]
+      properties:
+        nombreEmpresa:
+          type: string
+        contactoNombre:
+          type: string
+        contactoTelefono:
+          type: string
+        contactoEmail:
+          type: string
+          format: email
+        aceptaDevoluciones:
+          type: boolean
+          default: true
+        frecuenciaVisita:
+          type: string
+          default: semanal
+        activo:
+          type: boolean
+          default: true
+
+    UpdateProveedorRequest:
+      type: object
+      properties:
+        nombreEmpresa:
+          type: string
+        contactoNombre:
+          type: string
+        contactoTelefono:
+          type: string
+        contactoEmail:
+          type: string
+          format: email
+        aceptaDevoluciones:
+          type: boolean
+        frecuenciaVisita:
+          type: string
+        activo:
+          type: boolean
+
+    DetalleCompra:
+      type: object
+      properties:
+        idDetalleCompra:
+          type: integer
+        idMedicamento:
+          type: integer
+        medicamento:
+          type: string
+        idLote:
+          type: integer
+          nullable: true
+        numeroLote:
+          type: string
+          nullable: true
+        cantidad:
+          type: integer
+        precioUnitario:
+          type: number
+        subtotal:
+          type: number
+
+    DetalleCompraInput:
+      type: object
+      required: [idMedicamento, cantidad, precioUnitario]
+      properties:
+        idMedicamento:
+          type: integer
+        idLote:
+          type: integer
+          nullable: true
+        cantidad:
+          type: integer
+          minimum: 1
+        precioUnitario:
+          type: number
+          minimum: 0
+
+    Compra:
+      type: object
+      properties:
+        idCompra:
+          type: integer
+        idProveedor:
+          type: integer
+        proveedor:
+          type: string
+        numeroFactura:
+          type: string
+        fechaCompra:
+          type: string
+          format: date
+        totalCompra:
+          type: number
+        estado:
+          type: string
+          enum: [pendiente, completada, devuelta_parcial, devuelta_total]
+        observaciones:
+          type: string
+          nullable: true
+        fechaRegistro:
+          type: string
+          format: date-time
+        detalles:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetalleCompra'
+
+    CreateCompraRequest:
+      type: object
+      required: [idProveedor, numeroFactura, detalles]
+      properties:
+        idProveedor:
+          type: integer
+        numeroFactura:
+          type: string
+        fechaCompra:
+          type: string
+          format: date
+        estado:
+          type: string
+          enum: [pendiente, completada, devuelta_parcial, devuelta_total]
+          default: pendiente
+        observaciones:
+          type: string
+        idUbicacion:
+          type: integer
+          description: Ubicación destino para la entrada de inventario (por defecto la primera activa)
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DetalleCompraInput'
+
+    UpdateCompraRequest:
+      type: object
+      properties:
+        idProveedor:
+          type: integer
+        numeroFactura:
+          type: string
+        fechaCompra:
+          type: string
+          format: date
+        estado:
+          type: string
+          enum: [pendiente, completada, devuelta_parcial, devuelta_total]
+        observaciones:
+          type: string
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DetalleCompraInput'
+
+    CambiarEstadoCompraRequest:
+      type: object
+      required: [estado]
+      properties:
+        estado:
+          type: string
+          enum: [pendiente, completada, devuelta_parcial, devuelta_total]
+        idUbicacion:
+          type: integer
+
+    DetalleReceta:
+      type: object
+      properties:
+        idDetalleReceta:
+          type: integer
+        idMedicamento:
+          type: integer
+          nullable: true
+        medicamento:
+          type: string
+          nullable: true
+        dosis:
+          type: string
+        frecuencia:
+          type: string
+        viaAdministracion:
+          type: string
+        duracionTratamiento:
+          type: string
+        cantidadPrescrita:
+          type: integer
+        indicaciones:
+          type: string
+          nullable: true
+
+    DetalleRecetaInput:
+      type: object
+      required: [dosis, frecuencia, viaAdministracion, duracionTratamiento]
+      properties:
+        idMedicamento:
+          type: integer
+          nullable: true
+        dosis:
+          type: string
+        frecuencia:
+          type: string
+        viaAdministracion:
+          type: string
+        duracionTratamiento:
+          type: string
+        cantidadPrescrita:
+          type: integer
+          minimum: 1
+          default: 1
+        indicaciones:
+          type: string
+
+    Receta:
+      type: object
+      properties:
+        idReceta:
+          type: integer
+        idCliente:
+          type: integer
+        cliente:
+          type: string
+        numeroReceta:
+          type: string
+        medicoPrescriptor:
+          type: string
+        fechaEmision:
+          type: string
+          format: date
+        fechaRegistroFarmacia:
+          type: string
+          format: date-time
+        fechaVencimiento:
+          type: string
+          format: date
+        observacionesReceta:
+          type: string
+          nullable: true
+        estado:
+          type: string
+          enum: [vigente, usada, vencida, anulada]
+        detalles:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetalleReceta'
+
+    CreateRecetaRequest:
+      type: object
+      required: [idCliente, numeroReceta, medicoPrescriptor, fechaEmision, fechaVencimiento, detalles]
+      properties:
+        idCliente:
+          type: integer
+        numeroReceta:
+          type: string
+        medicoPrescriptor:
+          type: string
+        fechaEmision:
+          type: string
+          format: date
+        fechaVencimiento:
+          type: string
+          format: date
+        observacionesReceta:
+          type: string
+        estado:
+          type: string
+          enum: [vigente, usada, vencida, anulada]
+          default: vigente
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DetalleRecetaInput'
+
+    UpdateRecetaRequest:
+      type: object
+      properties:
+        idCliente:
+          type: integer
+        numeroReceta:
+          type: string
+        medicoPrescriptor:
+          type: string
+        fechaEmision:
+          type: string
+          format: date
+        fechaVencimiento:
+          type: string
+          format: date
+        observacionesReceta:
+          type: string
+        estado:
+          type: string
+          enum: [vigente, usada, vencida, anulada]
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DetalleRecetaInput'
+
+    CambiarEstadoRecetaRequest:
+      type: object
+      required: [estado]
+      properties:
+        estado:
+          type: string
+          enum: [vigente, usada, vencida, anulada]
+
+    MetodoPago:
+      type: object
+      properties:
+        idMetodoPago:
+          type: integer
+        nombre:
+          type: string
+
+    DetalleVenta:
+      type: object
+      properties:
+        idDetalleVenta:
+          type: integer
+        idMedicamento:
+          type: integer
+        medicamento:
+          type: string
+        idLote:
+          type: integer
+        numeroLote:
+          type: string
+        idReceta:
+          type: integer
+          nullable: true
+        cantidad:
+          type: integer
+        precioUnitario:
+          type: number
+        descuento:
+          type: number
+        subtotal:
+          type: number
+        recetaPresentada:
+          type: boolean
+
+    DetalleVentaInput:
+      type: object
+      required: [idMedicamento, cantidad]
+      properties:
+        idMedicamento:
+          type: integer
+        cantidad:
+          type: integer
+          minimum: 1
+        precioUnitario:
+          type: number
+          minimum: 0
+          description: Si se omite, se usa el precio de venta del medicamento
+        descuento:
+          type: number
+          minimum: 0
+          default: 0
+        idReceta:
+          type: integer
+          nullable: true
+        recetaPresentada:
+          type: boolean
+          description: Obligatorio para medicamentos que requieren receta
+
+    Pago:
+      type: object
+      properties:
+        idPago:
+          type: integer
+        idMetodoPago:
+          type: integer
+        metodoPago:
+          type: string
+        monto:
+          type: number
+        referencia:
+          type: string
+          nullable: true
+        fechaPago:
+          type: string
+          format: date-time
+        estadoPago:
+          type: string
+          enum: [pendiente, confirmado, anulado]
+
+    PagoInput:
+      type: object
+      required: [idMetodoPago, monto]
+      properties:
+        idMetodoPago:
+          type: integer
+        monto:
+          type: number
+          exclusiveMinimum: true
+          minimum: 0
+        referencia:
+          type: string
+          nullable: true
+        estadoPago:
+          type: string
+          enum: [pendiente, confirmado]
+          default: confirmado
+
+    Venta:
+      type: object
+      properties:
+        idVenta:
+          type: integer
+        idEmpleado:
+          type: integer
+          nullable: true
+        empleado:
+          type: string
+          nullable: true
+        idCliente:
+          type: integer
+          nullable: true
+        cliente:
+          type: string
+          nullable: true
+        fechaVenta:
+          type: string
+          format: date-time
+        totalVenta:
+          type: number
+        estado:
+          type: string
+          enum: [pendiente, completada, anulada, devuelta_parcial, devuelta_total]
+        observaciones:
+          type: string
+          nullable: true
+        totalPagado:
+          type: number
+        saldo:
+          type: number
+        detalles:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetalleVenta'
+        pagos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pago'
+
+    CreateVentaRequest:
+      type: object
+      required: [detalles]
+      properties:
+        idCliente:
+          type: integer
+          nullable: true
+        idEmpleado:
+          type: integer
+          nullable: true
+          description: Si se omite, se intenta resolver desde el usuario autenticado
+        fechaVenta:
+          type: string
+          format: date-time
+        observaciones:
+          type: string
+          nullable: true
+        estado:
+          type: string
+          enum: [pendiente, completada]
+          default: pendiente
+        detalles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DetalleVentaInput'
+        pagos:
+          type: array
+          items:
+            $ref: '#/components/schemas/PagoInput'
+
+    AnularVentaRequest:
+      type: object
+      properties:
+        motivo:
+          type: string
+        idEmpleado:
+          type: integer
+          nullable: true
+
+    ComprobanteVenta:
+      type: object
+      properties:
+        numeroComprobante:
+          type: string
+        fechaEmision:
+          type: string
+          format: date-time
+        estado:
+          type: string
+          enum: [pendiente, completada, anulada, devuelta_parcial, devuelta_total]
+        cliente:
+          type: object
+          nullable: true
+          properties:
+            idCliente:
+              type: integer
+            nombre:
+              type: string
+        empleado:
+          type: object
+          nullable: true
+          properties:
+            idEmpleado:
+              type: integer
+            nombre:
+              type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              idMedicamento:
+                type: integer
+              medicamento:
+                type: string
+              numeroLote:
+                type: string
+              cantidad:
+                type: integer
+              precioUnitario:
+                type: number
+              descuento:
+                type: number
+              subtotal:
+                type: number
+              recetaPresentada:
+                type: boolean
+        subtotal:
+          type: number
+        totalDescuentos:
+          type: number
+        total:
+          type: number
+        pagos:
+          type: array
+          items:
+            type: object
+            properties:
+              idPago:
+                type: integer
+              metodoPago:
+                type: string
+              monto:
+                type: number
+              referencia:
+                type: string
+                nullable: true
+              fechaPago:
+                type: string
+                format: date-time
+              estadoPago:
+                type: string
+                enum: [pendiente, confirmado, anulado]
+        totalPagado:
+          type: number
+        saldo:
+          type: number
+        observaciones:
+          type: string
+          nullable: true
+
+    Alergia:
+      type: object
+      properties:
+        idAlergia:
+          type: integer
+        nombre:
+          type: string
+        descripcion:
+          type: string
+          nullable: true
+        activo:
+          type: boolean
+
+    CreateAlergiaRequest:
+      type: object
+      required: [nombre]
+      properties:
+        nombre:
+          type: string
+        descripcion:
+          type: string
+        activo:
+          type: boolean
+          default: true
+
+    UpdateAlergiaRequest:
+      type: object
+      properties:
+        nombre:
+          type: string
+        descripcion:
+          type: string
+        activo:
+          type: boolean
+
+    ClienteAlergia:
+      type: object
+      properties:
+        idCliente:
+          type: integer
+        idAlergia:
+          type: integer
+        alergia:
+          type: string
+        descripcion:
+          type: string
+          nullable: true
+        gravedad:
+          type: string
+          enum: [leve, moderada, grave]
+        observacion:
+          type: string
+          nullable: true
+        fechaRegistro:
+          type: string
+          format: date-time
+
+    AsignarAlergiaRequest:
+      type: object
+      required: [idCliente, idAlergia]
+      properties:
+        idCliente:
+          type: integer
+        idAlergia:
+          type: integer
+        gravedad:
+          type: string
+          enum: [leve, moderada, grave]
+          default: moderada
+        observacion:
+          type: string
+
+    ValidacionAlergia:
+      type: object
+      properties:
+        idCliente:
+          type: integer
+        idMedicamento:
+          type: integer
+        tieneAlergia:
+          type: boolean
+        alergias:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClienteAlergia'
