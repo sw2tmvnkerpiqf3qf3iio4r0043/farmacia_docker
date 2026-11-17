@@ -12,6 +12,7 @@ services:
 
   backend:
     build: ./farmacia-backend
+    pull_policy: missing  # <--- Agregado para evitar errores de red
     ports:
       - "3001:3001"
     environment:
@@ -23,11 +24,14 @@ services:
       PORT: 3001
     depends_on:
       - db
+
   frontend:
     build: ./farmacia-front/Farmacia_web
+    pull_policy: missing  # <--- Agregado para evitar errores de red
     ports:
       - "8080:80"
     depends_on:
       - backend
+
 volumes:
   pgdata:
