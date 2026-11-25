@@ -1,6 +1,6 @@
 const db = require('../db/db.js');
 
-const IMAGEN_DEFAULT = 'https://cdn-icons-png.flaticon.com/512/3004/3004458.png';
+const IMAGEN_DEFAULT = '/uploads/default.svg';
 
 const STOCK_EXPRESSION = `
   COALESCE((

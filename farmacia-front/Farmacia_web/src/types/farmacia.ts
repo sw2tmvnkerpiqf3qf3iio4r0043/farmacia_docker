@@ -16,9 +16,10 @@ export interface AuthResponse {
 
 export interface Cliente {
   idCliente: number;
-  idPersona: number;
+  idPersona?: number;
   ci: string;
   nombre: string;
+  nombreCompleto?: string;
   telefono: string;
   email: string | null;
   fechaNacimiento: string | null;
@@ -32,18 +33,41 @@ export interface MetodoPago {
   nombre: string;
 }
 
+export interface Ubicacion {
+  idUbicacion: number;
+  nombre?: string;
+  direccion?: string;
+  sucursal?: string | { nombre?: string; [key: string]: unknown };
+  nombreSucursal?: string;
+  activo?: boolean;
+  [key: string]: unknown;
+}
+
+export interface Receta {
+  idReceta: number;
+  numeroReceta?: string | null;
+  medicoPrescriptor?: string | null;
+  fechaEmision?: string | null;
+  fechaVencimiento?: string | null;
+  imagenUrl: string;
+  observacionesReceta?: string | null;
+  [key: string]: unknown;
+}
+
 export interface VentaDetalle {
   idDetalleVenta: number;
   idMedicamento: number;
   medicamento: string;
-  idLote: number;
-  numeroLote: string;
+  idLote?: number;
+  numeroLote?: string;
   idReceta: number | null;
   cantidad: number;
   precioUnitario: number;
   descuento: number;
   subtotal: number;
   recetaPresentada: boolean;
+  receta?: Receta | null;
+  imagenReceta?: string | null;
 }
 
 export interface Pago {
@@ -62,6 +86,8 @@ export interface Venta {
   empleado: string | null;
   idCliente: number | null;
   cliente: string | null;
+  idUbicacion?: number | null;
+  ubicacion?: string | Ubicacion | null;
   fechaVenta: string;
   totalVenta: number;
   estado: string;
@@ -75,9 +101,10 @@ export interface Venta {
 export interface CreateVentaPayload {
   idCliente?: number | null;
   idEmpleado?: number | null;
+  idUbicacion?: number | null;
   fechaVenta?: string;
   observaciones?: string;
-  estado?: 'pendiente' | 'completada';
+  estado?: 'pendiente' | 'en_camino' | 'completada';
   detalles: {
     idMedicamento: number;
     cantidad: number;
@@ -181,4 +208,9 @@ export interface CartItem {
   stock: number;
   requiereReceta: boolean;
   imagen?: string;
+  precioOriginal?: number;
+  porcentajeDescuento?: number;
+  descuento?: number;
+  nombreOferta?: string;
+  presentacion?: string;
 }

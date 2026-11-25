@@ -1,27 +1,45 @@
 const { Router } = require('express');
 const upload = require('../middleware/upload');
-const path = require('path');
 
 const router = Router();
 
-// Endpoint para subir imagen de medicamento
-router.post('/medicamento', upload.single('imagen'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No se subió ningún archivo' });
-    }
+function responderArchivo(req, res) {
+  const archivo = req.file || Object.values(req.files || {}).reduce((todos, grupos) => todos.concat(grupos), [])[0];
 
-    // Construir URL completa (ajusta el puerto si es necesario)
-    const imageUrl = `http://localhost:3000/uploads/${req.file.filename}`;
-    
-    res.json({
-      success: true,
-      url: imageUrl,
-      filename: req.file.filename
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al subir la imagen' });
+  if (!archivo) {
+    return res.status(400).json({ error: 'ValidationError', message: 'No se subió ningún archivo' });
   }
-});
+
+  return res.json({
+    success: true,
+    url: `/uploads/${archivo.filename}`,
+    filename: archivo.filename,
+    originalName: archivo.originalname,
+  });
+}
+
+function handleUploadError(err, _req, res, next) {
+  if (err.name === 'MulterError') {
+    const message = err.code === 'LIMIT_FILE_SIZE'
+      ? 'La imagen no debe superar 5MB'
+      : err.message;
+    return res.status(400).json({ error: 'ValidationError', message });
+  }
+
+  if (err) {
+    return res.status(400).json({ error: 'ValidationError', message: err.message || 'Error al subir la imagen' });
+  }
+
+  next();
+}
+
+router.post('/medicamento', upload.single('imagen'), responderArchivo);
+router.post('/', upload.fields([
+  { name: 'file', maxCount: 1 },
+  { name: 'imagen', maxCount: 1 },
+  { name: 'receta', maxCount: 1 },
+]), responderArchivo);
+
+router.use(handleUploadError);
 
 module.exports = router;

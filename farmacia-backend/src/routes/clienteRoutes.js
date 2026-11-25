@@ -10,6 +10,8 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', requireRole('admin', 'regente', 'vendedor'), clienteController.list);
+router.get('/mi', clienteController.getMi);
+router.put('/mi', clienteValidators.mi, validate, clienteController.updateMi);
 router.get('/:id', requireRole('admin', 'regente', 'vendedor'), clienteValidators.id, validate, clienteController.getById);
 
 router.post('/', requireRole('admin', 'regente', 'vendedor'), clienteValidators.create, validate, clienteController.create);

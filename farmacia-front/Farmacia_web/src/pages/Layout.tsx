@@ -1,7 +1,7 @@
 import { Link, Outlet } from "react-router-dom";
 import BarraLateral from "../components/BarraLateral";
 import BarraSuperior from "../components/BarraSuperior";
-import { useCart } from "../context/CartContext";
+import { useCart } from "../context/useCart";
 
 interface PropsLayout {
   usuario: string;
@@ -48,13 +48,13 @@ const Layout = ({ usuario, menuItems, onLogout }: PropsLayout) => {
                 {menuItems
                   .filter((item) => item.name !== "Catálogo" && item.name !== "Ofertas")
                   .map((item, index) => (
-                    <a
+                    <Link
                       key={index}
-                      href={item.url}
+                      to={item.url}
                       className="text-gray-700 hover:text-blue-600 font-medium transition"
                     >
                       {item.name}
-                    </a>
+                    </Link>
                   ))}
               </nav>
 

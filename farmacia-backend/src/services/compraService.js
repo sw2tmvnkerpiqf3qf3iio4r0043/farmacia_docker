@@ -71,11 +71,14 @@ function calcularDetalles(detalles) {
 async function resolverLote(client, detalle, idProveedor) {
   if (detalle.idLote) {
     const lote = await client.query(
-      'SELECT id_medicamento, activo FROM lote_medicamento WHERE id_lote = $1',
+      'SELECT id_medicamento, estado FROM lote_medicamento WHERE id_lote = $1',
       [detalle.idLote]
     );
     if (!lote.rows[0]) {
       throw httpError(400, `El lote ${detalle.idLote} no existe`);
+    }
+    if (lote.rows[0].estado !== 'activo') {
+      throw httpError(400, `El lote ${detalle.idLote} no está activo`);
     }
     if (Number(lote.rows[0].id_medicamento) !== Number(detalle.idMedicamento)) {
       throw httpError(400, `El lote ${detalle.idLote} no corresponde al medicamento`);

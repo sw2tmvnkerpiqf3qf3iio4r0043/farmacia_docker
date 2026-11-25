@@ -50,22 +50,6 @@ async function getOfertasActivasConProductos(req, res, next) {
     next(err); 
   }
 }
-async function getOfertasActivasConProductos(req, res, next) {
-  try {
-    const ofertas = await ofertaMedicamentoService.getOfertasActivasConProductos();
-    res.json(ofertas);
-  } catch (err) { 
-    next(err); 
-  }
-}
-async function getOfertasActivasConProductos(req, res, next) {
-  try {
-    const ofertas = await ofertaMedicamentoService.getOfertasActivasConProductos();
-    res.json(ofertas);
-  } catch (err) { 
-    next(err); 
-  }
-}
 
 module.exports = { 
   asignarMedicamento, 

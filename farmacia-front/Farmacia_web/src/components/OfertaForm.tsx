@@ -1,76 +1,70 @@
-import React from "react";
-
-interface OfertaFormData {
-  nombre_oferta: string;
+export interface OfertaFormData {
+  nombreOferta: string;
   descripcion: string;
-  porcentaje_descuento: string;
-  fecha_inicio: string;
-  fecha_fin: string;
-  activo: string;
+  porcentajeDescuento: string;
+  fechaInicio: string;
+  fechaFin: string;
+  activo: boolean;
 }
 
 interface OfertaFormProps {
   formData: OfertaFormData;
-  onInputChange: (field: string, value: any) => void;
+  onInputChange: (field: keyof OfertaFormData, value: string | boolean) => void;
 }
 
-const OfertaForm: React.FC<OfertaFormProps> = ({
-  formData,
-  onInputChange,
-}) => {
+const INPUT_CLASS =
+  "w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500";
+
+const OfertaForm = ({ formData, onInputChange }: OfertaFormProps) => {
   return (
     <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Nombre de la Oferta */}
         <div className="md:col-span-2">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Nombre de la Oferta *
+            Nombre de la oferta *
           </label>
           <input
             type="text"
-            value={formData.nombre_oferta}
-            onChange={(e) => onInputChange("nombre_oferta", e.target.value)}
+            value={formData.nombreOferta}
+            onChange={(e) => onInputChange("nombreOferta", e.target.value)}
             required
-            className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-            placeholder="Ej: Descuento Verano"
+            className={INPUT_CLASS}
+            placeholder="Ej: Descuento de verano"
           />
         </div>
 
-        {/* Porcentaje de Descuento */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Porcentaje de Descuento (%) *
+            Porcentaje de descuento (%) *
           </label>
           <input
             type="number"
-            value={formData.porcentaje_descuento}
-            onChange={(e) => onInputChange("porcentaje_descuento", e.target.value)}
             min="0"
             max="100"
             step="0.01"
+            value={formData.porcentajeDescuento}
+            onChange={(e) => onInputChange("porcentajeDescuento", e.target.value)}
             required
-            className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            className={INPUT_CLASS}
             placeholder="10"
           />
-          <p className="text-xs text-gray-500 mt-1">Mínimo: 0% - Máximo: 100%</p>
+          <p className="text-xs text-gray-500 mt-1">Entre 0% y 100%</p>
         </div>
 
-        {/* Estado */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Estado *
+            Estado
           </label>
           <select
-            value={formData.activo}
-            onChange={(e) => onInputChange("activo", e.target.value)}
-            className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            value={formData.activo ? "true" : "false"}
+            onChange={(e) => onInputChange("activo", e.target.value === "true")}
+            className={INPUT_CLASS}
           >
-            <option value="1">Activa</option>
-            <option value="0">Inactiva</option>
+            <option value="true">Activa</option>
+            <option value="false">Inactiva</option>
           </select>
         </div>
 
-        {/* Descripción */}
         <div className="md:col-span-2">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Descripción
@@ -79,36 +73,34 @@ const OfertaForm: React.FC<OfertaFormProps> = ({
             value={formData.descripcion}
             onChange={(e) => onInputChange("descripcion", e.target.value)}
             rows={3}
-            className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-            placeholder="Descripción de la oferta..."
+            className={INPUT_CLASS}
+            placeholder="Descripción de la promoción..."
           />
         </div>
 
-        {/* Fecha Inicio */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Fecha Inicio *
+            Fecha de inicio *
           </label>
           <input
             type="date"
-            value={formData.fecha_inicio}
-            onChange={(e) => onInputChange("fecha_inicio", e.target.value)}
+            value={formData.fechaInicio}
+            onChange={(e) => onInputChange("fechaInicio", e.target.value)}
             required
-            className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            className={INPUT_CLASS}
           />
         </div>
 
-        {/* Fecha Fin */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Fecha Fin *
+            Fecha de fin *
           </label>
           <input
             type="date"
-            value={formData.fecha_fin}
-            onChange={(e) => onInputChange("fecha_fin", e.target.value)}
+            value={formData.fechaFin}
+            onChange={(e) => onInputChange("fechaFin", e.target.value)}
             required
-            className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            className={INPUT_CLASS}
           />
         </div>
       </div>

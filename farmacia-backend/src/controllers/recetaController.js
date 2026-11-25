@@ -24,6 +24,25 @@ async function create(req, res, next) {
   try { res.status(201).json(await recetaService.createReceta(req.body)); } catch (err) { next(err); }
 }
 
+async function createMia(req, res, next) {
+  try {
+    if (!req.user || !req.user.idCliente) {
+      return res.status(403).json({ error: 'Forbidden', message: 'El usuario no está vinculado a un cliente' });
+    }
+    const receta = await recetaService.createReceta({ ...req.body, idCliente: req.user.idCliente });
+    return res.status(201).json(receta);
+  } catch (err) { next(err); }
+}
+
+async function listMias(req, res, next) {
+  try {
+    if (!req.user || !req.user.idCliente) {
+      return res.status(403).json({ error: 'Forbidden', message: 'El usuario no está vinculado a un cliente' });
+    }
+    res.json(await recetaService.getRecetasByCliente(req.user.idCliente));
+  } catch (err) { next(err); }
+}
+
 async function update(req, res, next) {
   try {
     const receta = await recetaService.updateReceta(req.params.id, req.body);
@@ -48,4 +67,4 @@ async function remove(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, getById, getByCliente, listVigentes, create, update, changeEstado, remove };
+module.exports = { list, getById, getByCliente, listVigentes, create, createMia, listMias, update, changeEstado, remove };

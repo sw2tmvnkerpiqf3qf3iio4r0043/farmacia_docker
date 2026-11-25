@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Imagen no disponible">
+  <rect width="128" height="128" rx="24" fill="#e0e7ff"/>
+  <path d="M44 28h40a8 8 0 0 1 8 8v56a8 8 0 0 1-8 8H44a8 8 0 0 1-8-8V36a8 8 0 0 1 8-8z" fill="#fff" stroke="#4f46e5" stroke-width="4"/>
+  <path d="M64 44v40M44 64h40" stroke="#4f46e5" stroke-width="8" stroke-linecap="round"/>
+</svg>

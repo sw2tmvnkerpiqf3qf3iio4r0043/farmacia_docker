@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import PanelContenido from "../components/PanelContenido";
-import { useMedicamentos } from "../context/MedicamentoContext";
+import { useMedicamentos } from "../context/useMedicamentos";
 import apiClient from "../api/apiClient";
+import { extraerArreglo, numero, texto } from "../api/datosTienda";
 
 interface OfertaResumen {
   id_oferta: number;
@@ -10,38 +11,42 @@ interface OfertaResumen {
   fecha_fin: string;
 }
 
+interface RawOfertaDashboard {
+  [key: string]: unknown;
+  id_oferta?: number | string | null;
+  nombre_oferta?: string | null;
+  porcentaje_descuento?: number | string | null;
+  fecha_fin?: string | null;
+  activo?: boolean | number | string | null;
+}
+
 function DashboardDemo() {
   const usuario = "Administrador";
   const { medicamentos, cargando: cargandoMeds } = useMedicamentos();
   const [ofertasActivas, setOfertasActivas] = useState<OfertaResumen[]>([]);
   const [cargandoOfertas, setCargandoOfertas] = useState(true);
 
-  const [stats, setStats] = useState({
-    totalMedicamentos: 0,
-    valorTotalInventario: 0,
-    totalRequiereReceta: 0,
-    totalStockCritico: 0,
-    totalUnidadesInventario: 0
-  });
-
-  useEffect(() => {
-    if (medicamentos.length > 0) {
-      setStats({
-        totalMedicamentos: medicamentos.length,
-        valorTotalInventario: medicamentos.reduce((total, med) => total + (Number(med.precioCompra) * (med.stock || 0)), 0),
-        totalRequiereReceta: medicamentos.filter(m => m.requiereReceta).length,
-        totalStockCritico: medicamentos.filter(m => (m.stock || 0) <= 10).length,
-        totalUnidadesInventario: medicamentos.reduce((total, med) => total + (med.stock || 0), 0)
-      });
-    }
-  }, [medicamentos]);
+  const stats = useMemo(() => ({
+    totalMedicamentos: medicamentos.length,
+    valorTotalInventario: medicamentos.reduce((total, med) => total + (Number(med.precioCompra) * (med.stock || 0)), 0),
+    totalRequiereReceta: medicamentos.filter(m => m.requiereReceta).length,
+    totalStockCritico: medicamentos.filter(m => (m.stock || 0) <= 10).length,
+    totalUnidadesInventario: medicamentos.reduce((total, med) => total + (med.stock || 0), 0)
+  }), [medicamentos]);
 
   useEffect(() => {
     const cargarOfertasDashboard = async () => {
       try {
         const response = await apiClient.get('/oferta');
-        const activas = response.data.filter((o: any) => o.activo === 1 || o.activo === true || o.activo === "1");
-        setOfertasActivas(activas.slice(0, 3));
+        const activas = extraerArreglo<RawOfertaDashboard>(response.data).filter(
+          (oferta) => oferta.activo === 1 || oferta.activo === true || oferta.activo === "1"
+        );
+        setOfertasActivas(activas.slice(0, 3).map((oferta) => ({
+          id_oferta: numero(oferta.id_oferta),
+          nombre_oferta: texto(oferta.nombre_oferta),
+          porcentaje_descuento: oferta.porcentaje_descuento ?? 0,
+          fecha_fin: texto(oferta.fecha_fin),
+        })));
       } catch (error) {
         console.error('Error al cargar ofertas para dashboard:', error);
       } finally {

@@ -37,6 +37,11 @@ function formatCliente(row) {
   };
 }
 
+function toBoolean(value) {
+  if (typeof value === 'string') return ['true', '1', 'yes', 'on'].includes(value.trim().toLowerCase());
+  return Boolean(value);
+}
+
 function fechaISO(value) {
   if (!value) return null;
   if (value instanceof Date) {
@@ -212,10 +217,44 @@ async function deleteCliente(id) {
   return result.rows[0] || null;
 }
 
+function formatMiCliente(cliente) {
+  if (!cliente) return null;
+  return {
+    idCliente: cliente.idCliente,
+    ci: cliente.ci,
+    nombreCompleto: cliente.nombre,
+    telefono: cliente.telefono,
+    email: cliente.email,
+    fechaNacimiento: cliente.fechaNacimiento,
+    condicionesCronicas: cliente.condicionesCronicas,
+    esLocal: cliente.esLocal,
+    activo: cliente.activo,
+  };
+}
+
+async function getMiCliente(idCliente) {
+  return formatMiCliente(await getClienteById(idCliente));
+}
+
+async function updateMiCliente(idCliente, data) {
+  const payload = {
+    ci: data.ci,
+    nombre: data.nombreCompleto !== undefined ? data.nombreCompleto : data.nombre,
+    telefono: data.telefono,
+    email: data.email,
+    fechaNacimiento: data.fechaNacimiento,
+    condicionesCronicas: data.condicionesCronicas,
+    esLocal: data.esLocal !== undefined ? toBoolean(data.esLocal) : undefined,
+  };
+  return formatMiCliente(await updateCliente(idCliente, payload));
+}
+
 module.exports = {
   listClientes,
   getClienteById,
   createCliente,
   updateCliente,
   deleteCliente,
+  getMiCliente,
+  updateMiCliente,
 };

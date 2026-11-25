@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uploads-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: farmacia-backend
+  labels:
+    app: farmacia-backend
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: farmacia-backend
+  template:
+    metadata:
+      labels:
+        app: farmacia-backend
+    spec:
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: wait-for-db
+          image: postgres:18-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+          args:
+            - |
+              i=0
+              until pg_isready -h farmacia-db-service -p 5432 -U admin -d farmacia; do
+                i=$((i + 1))
+                if [ "$i" -ge 60 ]; then
+                  echo "Base de datos no disponible después de 120s"
+                  exit 1
+                fi
+                echo "Esperando a farmacia-db-service..."
+                sleep 2
+              done
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      containers:
+        - name: backend
+          image: sole950/farmacia-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3001
+          env:
+            - name: DB_HOST
+              value: farmacia-db-service
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: farmacia
+            - name: DB_USER
+              value: admin
+            - name: DB_PASSWORD
+              value: admin123
+            - name: JWT_SECRET
+              value: cambiar-este-secreto-en-produccion
+            - name: PORT
+              value: "3001"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 320Mi
+          readinessProbe:
+            httpGet:
+              path: /api/medicamento/estadisticas
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: /api/medicamento/estadisticas
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: uploads-storage
+              mountPath: /app/uploads
+      volumes:
+        - name: uploads-storage
+          persistentVolumeClaim:
+            claimName: uploads-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: farmacia-backend-service
+spec:
+  selector:
+    app: farmacia-backend
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: farmacia-backend
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http

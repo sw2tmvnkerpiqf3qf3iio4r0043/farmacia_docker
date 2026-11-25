@@ -1,10 +1,19 @@
 const { body, param, query } = require('express-validator');
 
+const esFechaValida = (value) => {
+  const date = new Date(value);
+  if (isNaN(date.getTime())) throw new Error('Fecha inválida');
+  return true;
+};
+
 const authValidators = {
   register: [
     body('email').isEmail().normalizeEmail().withMessage('Email inválido'),
     body('password').isLength({ min: 6 }).withMessage('La contraseña debe tener al menos 6 caracteres'),
     body('name').trim().notEmpty().withMessage('El nombre es requerido'),
+    body('ci').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 20 }).withMessage('El CI no puede superar 20 caracteres'),
+    body('telefono').optional({ nullable: true, checkFalsy: true }).trim().isLength({ max: 20 }).withMessage('El teléfono no puede superar 20 caracteres'),
+    body('fechaNacimiento').optional({ nullable: true, checkFalsy: true }).custom(esFechaValida).withMessage('La fecha de nacimiento es inválida'),
   ],
   login: [
     body('email').trim().notEmpty().withMessage('El email es requerido'),
@@ -141,17 +150,12 @@ const categoriaValidators = {
   ]
 };
 
-const esFechaValida = (value) => {
-  const date = new Date(value);
-  if (isNaN(date.getTime())) throw new Error('Fecha inválida');
-  return true;
-};
-
 const BOOLEANOS = [true, false, 'true', 'false', 0, 1, '0', '1'];
 const ESTADOS_LOTE = ['activo', 'agotado', 'cuarentena', 'vencido', 'devuelto'];
 const ESTADOS_COMPRA = ['pendiente', 'completada', 'devuelta_parcial', 'devuelta_total'];
 const ESTADOS_RECETA = ['vigente', 'usada', 'vencida', 'anulada'];
-const ESTADOS_VENTA = ['pendiente', 'completada', 'anulada', 'devuelta_parcial', 'devuelta_total'];
+const ESTADOS_VENTA = ['pendiente', 'en_camino', 'completada', 'anulada', 'devuelta_parcial', 'devuelta_total'];
+const ESTADOS_VENTA_CAMBIABLES = ['pendiente', 'en_camino', 'completada'];
 const ESTADOS_PAGO = ['pendiente', 'confirmado', 'anulado'];
 const GRAVEDADES = ['leve', 'moderada', 'grave'];
 const ROLES_USUARIO = ['Administrador', 'Regente', 'Vendedor', 'Almacenero'];
@@ -261,6 +265,16 @@ const clienteValidators = {
     body('condicionesCronicas').optional({ nullable: true }).trim(),
     body('esLocal').optional().isIn(BOOLEANOS),
     body('activo').optional().isIn(BOOLEANOS),
+  ],
+  mi: [
+    body('ci').optional().trim().notEmpty(),
+    body('nombreCompleto').optional().trim().notEmpty(),
+    body('nombre').optional().trim().notEmpty(),
+    body('telefono').optional().trim().notEmpty(),
+    body('email').optional({ nullable: true, checkFalsy: true }).isEmail().withMessage('El email es inválido'),
+    body('fechaNacimiento').optional({ nullable: true, checkFalsy: true }).custom(esFechaValida).withMessage('La fecha de nacimiento es inválida'),
+    body('condicionesCronicas').optional({ nullable: true }).trim(),
+    body('esLocal').optional().isIn(BOOLEANOS),
   ],
   id: [
     param('id').isInt().withMessage('El ID del cliente debe ser entero'),
@@ -373,6 +387,14 @@ const recetaValidators = {
     body('detalles.*.cantidadPrescrita').optional().isInt({ min: 1 }),
     body('detalles.*.indicaciones').optional().trim(),
   ],
+  crearMia: [
+    body('numeroReceta').optional().trim().notEmpty(),
+    body('medicoPrescriptor').optional().trim().notEmpty(),
+    body('fechaEmision').optional().custom(esFechaValida).withMessage('La fecha de emisión es inválida'),
+    body('fechaVencimiento').optional().custom(esFechaValida).withMessage('La fecha de vencimiento es inválida'),
+    body('imagenUrl').trim().notEmpty().matches(/^\/uploads\//).withMessage('La imagen debe ser una ruta /uploads/...'),
+    body('observacionesReceta').optional().trim(),
+  ],
   update: [
     param('id').isInt().withMessage('El ID de la receta debe ser entero'),
     body('idCliente').optional().isInt(),
@@ -443,6 +465,7 @@ const ventaValidators = {
     body('idEmpleado').optional({ nullable: true }).isInt().withMessage('El ID del empleado debe ser entero'),
     body('fechaVenta').optional({ nullable: true }).custom(esFechaValida).withMessage('La fecha de venta es inválida'),
     body('observaciones').optional({ nullable: true }).trim(),
+    body('idUbicacion').optional({ nullable: true }).isInt().withMessage('El ID de la ubicación debe ser entero'),
     body('estado').optional().isIn(['pendiente', 'completada']).withMessage('El estado inicial debe ser pendiente o completada'),
     body('detalles').isArray({ min: 1 }).withMessage('La venta debe incluir al menos un detalle'),
     body('detalles.*.idMedicamento').isInt().withMessage('El ID del medicamento es requerido y debe ser entero'),
@@ -489,6 +512,10 @@ const ventaValidators = {
     param('id').isInt().withMessage('El ID de la venta debe ser entero'),
     body('motivo').optional({ nullable: true }).trim(),
     body('idEmpleado').optional({ nullable: true }).isInt().withMessage('El ID del empleado debe ser entero'),
+  ],
+  cambiarEstado: [
+    param('id').isInt().withMessage('El ID de la venta debe ser entero'),
+    body('estado').isIn(ESTADOS_VENTA_CAMBIABLES).withMessage(`El estado debe ser uno de: ${ESTADOS_VENTA_CAMBIABLES.join(', ')}`),
   ],
 };
 

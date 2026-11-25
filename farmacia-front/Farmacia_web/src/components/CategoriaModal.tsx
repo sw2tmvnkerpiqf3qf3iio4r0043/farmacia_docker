@@ -1,7 +1,6 @@
-import React from "react";
 import CategoriaForm from "./CategoriaForm";
 
-interface CategoriaFormData {
+export interface CategoriaFormData {
   nombre: string;
   descripcion: string;
   tipo_categoria: string;
@@ -16,45 +15,57 @@ interface CategoriaModalProps {
   formData: CategoriaFormData;
   categorias: Array<{ id_categoria: number; nombre: string }>;
   editandoId: number | null;
-  onInputChange: (field: string, value: any) => void;
+  guardando: boolean;
+  errores: string[];
+  onInputChange: (field: keyof CategoriaFormData, value: string) => void;
 }
 
-const CategoriaModal: React.FC<CategoriaModalProps> = ({
+const CategoriaModal = ({
   isOpen,
   onClose,
   onSave,
   formData,
   categorias,
   editandoId,
+  guardando,
+  errores,
   onInputChange,
-}) => {
+}: CategoriaModalProps) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">
-              {editandoId ? "✏️ Editar Categoría" : "➕ Nueva Categoría"}
+              {editandoId ? "Editar categoría" : "Nueva categoría"}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               {editandoId
                 ? "Actualiza la información de la categoría"
-                : "Completa los datos para crear una nueva categoría"}
+                : "Completa los datos para crear una categoría"}
             </p>
           </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition text-2xl"
+            title="Cerrar"
           >
             ×
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-6">
+          {errores.length > 0 && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
+              <ul className="list-disc list-inside">
+                {errores.map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <CategoriaForm
             formData={formData}
             categorias={categorias}
@@ -63,21 +74,21 @@ const CategoriaModal: React.FC<CategoriaModalProps> = ({
           />
         </div>
 
-        {/* Footer */}
         <div className="flex gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
           <button
             type="button"
             onClick={onSave}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg text-sm font-semibold transition"
+            disabled={guardando}
+            className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3 rounded-lg text-sm font-semibold transition"
           >
-            {editandoId ? "💾 Actualizar Categoría" : "✅ Guardar Categoría"}
+            {guardando ? "Guardando..." : editandoId ? "Actualizar categoría" : "Guardar categoría"}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="px-6 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg text-sm font-semibold transition"
           >
-            ❌ Cancelar
+            Cancelar
           </button>
         </div>
       </div>

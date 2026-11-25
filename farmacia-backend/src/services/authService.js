@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const db = require('../db/db');
 const { signToken } = require('../middleware/auth');
 
@@ -9,14 +10,6 @@ const API_ROLE_BY_ROL = {
   Regente: 'regente',
   Vendedor: 'vendedor',
   Almacenero: 'almacenero',
-};
-
-const ROL_BY_API_ROLE = {
-  admin: 'Administrador',
-  administrador: 'Administrador',
-  regente: 'Regente',
-  vendedor: 'Vendedor',
-  almacenero: 'Almacenero',
 };
 
 const USER_COLUMNS = `
@@ -90,44 +83,71 @@ function sanitizeEmail(email) {
   return String(email).trim().toLowerCase();
 }
 
-async function register({ email, password, name, role }) {
+function fechaISO(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function placeholderCI() {
+  return `CI-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+}
+
+async function register({ email, password, name, ci, telefono, fechaNacimiento }) {
   const normalizedEmail = sanitizeEmail(email);
-
-  const existing = await db.query(
-    'SELECT 1 FROM usuario WHERE LOWER(nombre_usuario) = LOWER($1)',
-    [normalizedEmail]
-  );
-  if (existing.rows.length > 0) {
-    throw httpError(409, 'El email ya está registrado');
-  }
-
+  const nombre = String(name).trim();
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+  const client = await db.pool.connect();
 
-  const inserted = await db.query(
-    `INSERT INTO usuario (nombre_usuario, nombre, contrasena_hash, activo)
-     VALUES ($1, $2, $3, TRUE)
-     RETURNING id_usuario`,
-    [normalizedEmail, name, passwordHash]
-  );
-  const userId = inserted.rows[0].id_usuario;
+  try {
+    await client.query('BEGIN');
 
-  const rolApi = (role || '').trim().toLowerCase();
-  const rolNombre = ROL_BY_API_ROLE[rolApi];
-  if (rolNombre) {
-    const rol = await db.query(
-      'SELECT id_rol FROM rol WHERE nombre = $1 AND activo',
-      [rolNombre]
+    const existing = await client.query(
+      'SELECT 1 FROM usuario WHERE LOWER(nombre_usuario) = LOWER($1)',
+      [normalizedEmail]
     );
-    if (rol.rows.length > 0) {
-      await db.query(
-        'INSERT INTO usuario_rol (id_usuario, id_rol) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-        [userId, rol.rows[0].id_rol]
-      );
+    if (existing.rows.length > 0) {
+      throw httpError(409, 'El email ya está registrado');
     }
-  }
 
-  const row = await findById(userId);
-  return { user: formatUser(row), token: signToken(tokenPayload(row)) };
+    const persona = await client.query(
+      `INSERT INTO persona (ci, nombre_completo, telefono, email)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id_persona`,
+      [
+        String(ci || '').trim() || placeholderCI(),
+        nombre,
+        String(telefono || '').trim() || 'N/D',
+        normalizedEmail,
+      ]
+    );
+
+    const cliente = await client.query(
+      `INSERT INTO cliente (id_persona, fecha_nacimiento, activo)
+       VALUES ($1, $2, TRUE)
+       RETURNING id_cliente`,
+      [persona.rows[0].id_persona, fechaISO(fechaNacimiento)]
+    );
+    const idCliente = cliente.rows[0].id_cliente;
+
+    const inserted = await client.query(
+      `INSERT INTO usuario (nombre_usuario, nombre, contrasena_hash, activo, id_cliente)
+       VALUES ($1, $2, $3, TRUE, $4)
+       RETURNING id_usuario`,
+      [normalizedEmail, nombre, passwordHash, idCliente]
+    );
+
+    await client.query('COMMIT');
+
+    const row = await findById(inserted.rows[0].id_usuario);
+    return { user: formatUser(row), token: signToken(tokenPayload(row)) };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 async function login({ email, password }) {

@@ -22,6 +22,35 @@ function formatDetalle(row) {
   };
 }
 
+function extraerImagenUrl(observaciones) {
+  const coincide = String(observaciones || '').match(/Imagen:\s*(\/uploads\/[^\s|]+)/i);
+  return coincide ? coincide[1] : null;
+}
+
+function buildObservaciones(observaciones, imagenUrl) {
+  const base = String(observaciones || '').trim();
+  if (!imagenUrl) return base || null;
+  const imagen = `Imagen: ${imagenUrl}`;
+  return base ? `${base} | ${imagen}` : imagen;
+}
+
+function limpiarObservaciones(observaciones) {
+  return String(observaciones || '')
+    .replace(/^Imagen:\s*\S+\s*\|\s*/i, '')
+    .replace(/\s*\|\s*Imagen:\s*\S+/gi, '')
+    .trim();
+}
+
+function fechaISO(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function sumarDias(fecha, dias) {
+  const date = fecha ? new Date(fecha) : new Date();
+  date.setDate(date.getDate() + dias);
+  return fechaISO(date);
+}
+
 function formatReceta(row) {
   if (!row) return null;
   return {
@@ -34,6 +63,7 @@ function formatReceta(row) {
     fechaRegistroFarmacia: row.fecha_registro_farmacia,
     fechaVencimiento: row.fecha_vencimiento,
     observacionesReceta: row.observaciones_receta,
+    imagenUrl: row.imagen_url || extraerImagenUrl(row.observaciones_receta),
     estado: row.estado,
     detalles: row.detalles || undefined,
   };
@@ -58,8 +88,9 @@ function validarFechas(emision, vencimiento) {
 }
 
 function normalizarDetalles(detalles) {
-  if (!Array.isArray(detalles) || detalles.length === 0) {
-    throw httpError(400, 'La receta debe incluir al menos un detalle');
+  if (detalles === undefined || detalles === null) return [];
+  if (!Array.isArray(detalles)) {
+    throw httpError(400, 'Los detalles de la receta deben ser un arreglo');
   }
   return detalles.map((d) => {
     const idMedicamento = d.idMedicamento !== undefined
@@ -128,14 +159,22 @@ async function createReceta(data) {
     throw httpError(400, 'El cliente indicado no existe');
   }
 
-  validarFechas(data.fechaEmision, data.fechaVencimiento);
+  const fechaEmision = data.fechaEmision || data.fecha_emision || fechaISO(new Date());
+  const fechaVencimiento = data.fechaVencimiento || data.fecha_vencimiento || sumarDias(fechaEmision, 30);
+  validarFechas(fechaEmision, fechaVencimiento);
 
   const estado = data.estado || 'vigente';
   if (!ESTADOS_VALIDOS.includes(estado)) {
     throw httpError(400, `Estado inválido. Valores permitidos: ${ESTADOS_VALIDOS.join(', ')}`);
   }
 
-  const numeroReceta = data.numeroReceta || data.numero_receta;
+  const numeroReceta = data.numeroReceta || data.numero_receta || `REC-${Date.now()}`;
+  const medicoPrescriptor = data.medicoPrescriptor || data.medico_prescriptor || 'Receta cargada por el cliente';
+  const imagenUrl = data.imagenUrl || data.imagen_url || null;
+  const observaciones = buildObservaciones(
+    data.observacionesReceta !== undefined ? data.observacionesReceta : data.observaciones_receta,
+    imagenUrl
+  );
   const existe = await db.query(
     'SELECT 1 FROM receta_medica WHERE LOWER(numero_receta) = LOWER($1)',
     [numeroReceta]
@@ -152,16 +191,17 @@ async function createReceta(data) {
 
     const inserted = await client.query(
       `INSERT INTO receta_medica
-         (id_cliente, numero_receta, medico_prescriptor, fecha_emision, fecha_vencimiento, observaciones_receta, estado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (id_cliente, numero_receta, medico_prescriptor, fecha_emision, fecha_vencimiento, observaciones_receta, imagen_url, estado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id_receta`,
       [
         data.idCliente,
         numeroReceta,
-        data.medicoPrescriptor,
-        data.fechaEmision,
-        data.fechaVencimiento,
-        data.observacionesReceta || null,
+        medicoPrescriptor,
+        fechaEmision,
+        fechaVencimiento,
+        observaciones,
+        imagenUrl,
         estado,
       ]
     );
@@ -200,6 +240,13 @@ async function updateReceta(id, data) {
   }
 
   const numeroReceta = data.numeroReceta !== undefined ? data.numeroReceta : actual.numeroReceta;
+  const imagenUrl = data.imagenUrl !== undefined
+    ? data.imagenUrl
+    : (data.imagen_url !== undefined ? data.imagen_url : actual.imagenUrl);
+  const baseObservaciones = data.observacionesReceta !== undefined
+    ? data.observacionesReceta
+    : limpiarObservaciones(actual.observacionesReceta);
+  const observaciones = buildObservaciones(baseObservaciones, imagenUrl);
   const duplicado = await db.query(
     'SELECT 1 FROM receta_medica WHERE LOWER(numero_receta) = LOWER($1) AND id_receta <> $2',
     [numeroReceta, id]
@@ -220,15 +267,17 @@ async function updateReceta(id, data) {
          fecha_emision = $4,
          fecha_vencimiento = $5,
          observaciones_receta = $6,
-         estado = $7
-       WHERE id_receta = $8`,
+         imagen_url = $7,
+         estado = $8
+       WHERE id_receta = $9`,
       [
         data.idCliente !== undefined ? data.idCliente : actual.idCliente,
         numeroReceta,
         data.medicoPrescriptor !== undefined ? data.medicoPrescriptor : actual.medicoPrescriptor,
         fechaEmision,
         fechaVencimiento,
-        data.observacionesReceta !== undefined ? data.observacionesReceta : actual.observacionesReceta,
+        observaciones,
+        imagenUrl,
         estado,
         id,
       ]

@@ -7,7 +7,7 @@ interface Props {
 function Titulo(props: Props) {
   const { texto, texto2, imagen } = props;
 
-  let estilo = {
+  const estilo = {
     color: "blue",
     fontSize: "40px",
   };

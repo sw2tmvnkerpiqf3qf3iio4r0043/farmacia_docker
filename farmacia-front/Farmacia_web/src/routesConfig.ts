@@ -16,9 +16,10 @@ const Ventas = React.lazy(() => import("./pages/Ventas"));
 const Compras = React.lazy(() => import("./pages/Compras"));
 const Carrito = React.lazy(() => import("./pages/Carrito"));
 const MisPedidos = React.lazy(() => import("./pages/MisPedidos"));
+const OfertasCliente = React.lazy(() => import("./pages/OfertasCliente"));
 const Default = React.lazy(() => import("./pages/Default"));
 
-export const componentRegistry: Record<string, React.ComponentType<any>> = {
+export const componentRegistry: Record<string, React.ComponentType> = {
   Home,
   About,
   Demo,
@@ -35,5 +36,6 @@ export const componentRegistry: Record<string, React.ComponentType<any>> = {
   Compras,
   Carrito,
   MisPedidos,
+  OfertasCliente,
   Default,
 };

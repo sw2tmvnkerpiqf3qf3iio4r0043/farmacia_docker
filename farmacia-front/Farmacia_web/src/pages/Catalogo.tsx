@@ -1,125 +1,190 @@
-import { useState } from 'react';
-import PanelContenido from "../components/PanelContenido";
-import { useMedicamentos } from "../context/MedicamentoContext";
-import { useCart } from "../context/CartContext";
+import { useEffect, useMemo, useState } from "react";
+import ProductCard from "../components/ProductCard";
+import ProductModal from "../components/ProductModal";
+import { useMedicamentos } from "../context/useMedicamentos";
+import { useCart } from "../context/useCart";
+import apiClient from "../api/apiClient";
+import type { CartItem } from "../types/farmacia";
+import type { ProductoModalItem } from "../components/ProductModal";
+import {
+  extraerArreglo,
+  normalizarCategoria,
+  normalizarMedicamento,
+  normalizarOferta,
+  type CategoriaNormalizada,
+  type MedicamentoNormalizado,
+  type OfertaNormalizada,
+  type RawCategoria,
+  type RawOferta,
+} from "../api/datosTienda";
 
 function Catalogo() {
   const { medicamentos, cargando } = useMedicamentos();
   const { addItem } = useCart();
   const [busqueda, setBusqueda] = useState("");
-  const [categoriaFiltro, setCategoriaFiltro] = useState("");
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas");
+  const [categorias, setCategorias] = useState<CategoriaNormalizada[]>([]);
+  const [ofertasMap, setOfertasMap] = useState<Record<number, OfertaNormalizada>>({});
+  const [productoSeleccionado, setProductoSeleccionado] = useState<ProductoModalItem | null>(null);
+  const [modalAbierto, setModalAbierto] = useState(false);
 
-  const medicamentosFiltrados = medicamentos.filter(med => {
-    const coincideBusqueda = 
-      med.nombreComercial.toLowerCase().includes(busqueda.toLowerCase()) ||
-      med.nombreGenerico.toLowerCase().includes(busqueda.toLowerCase());
-    const coincideCategoria = categoriaFiltro ? med.tipoProducto === categoriaFiltro : true;
-    return coincideBusqueda && coincideCategoria;
-  });
+  useEffect(() => {
+    const cargar = async () => {
+      try {
+        const [catsRes, ofertasRes] = await Promise.all([
+          apiClient.get("/categoria").catch(() => ({ data: [] })),
+          apiClient.get("/medicamento/con-oferta").catch(() => ({ data: [] })),
+        ]);
+        const cats = extraerArreglo<RawCategoria>(catsRes.data);
+        setCategorias(cats.map(normalizarCategoria));
+        const ofertas = extraerArreglo<RawOferta>(ofertasRes.data);
+        const map: Record<number, OfertaNormalizada> = {};
+        ofertas.forEach((raw) => {
+          const info = normalizarOferta(raw);
+          if (!info.idMedicamento) return;
+          map[info.idMedicamento] = info;
+        });
+        setOfertasMap(map);
+      } catch {
+        setCategorias([]);
+        setOfertasMap({});
+      }
+    };
+    void cargar();
+  }, []);
 
-  const categorias = [...new Set(medicamentos.map(m => m.tipoProducto).filter(Boolean))];
+  const productos = useMemo(() => medicamentos.map(normalizarMedicamento), [medicamentos]);
+
+  const filtrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return productos.filter((med) => {
+      const coincideBusqueda =
+        !q ||
+        med.nombreComercial.toLowerCase().includes(q) ||
+        med.nombreGenerico.toLowerCase().includes(q);
+      const coincideCategoria =
+        categoriaSeleccionada === "todas" ||
+        (categoriaSeleccionada === "ofertas"
+          ? Boolean(ofertasMap[med.idMedicamento])
+          : med.idCategoria === Number(categoriaSeleccionada));
+      return coincideBusqueda && coincideCategoria;
+    });
+  }, [productos, busqueda, categoriaSeleccionada, ofertasMap]);
+
+  const toCartItem = (med: MedicamentoNormalizado): Omit<CartItem, "cantidad"> => {
+    const oferta = ofertasMap[med.idMedicamento];
+    const precioOriginal = oferta ? oferta.precioOriginal || med.precioVenta : med.precioVenta;
+    const precioEfectivo = oferta ? oferta.precioConDescuento : med.precioVenta;
+    return {
+      idMedicamento: med.idMedicamento,
+      nombreComercial: med.nombreComercial,
+      nombreGenerico: med.nombreGenerico,
+      precioVenta: Number(precioEfectivo),
+      stock: med.stock,
+      requiereReceta: med.requiereReceta,
+      imagen: med.imagen || undefined,
+      precioOriginal: Number(precioOriginal),
+      porcentajeDescuento: oferta ? Number(oferta.porcentajeDescuento) : undefined,
+      nombreOferta: oferta?.nombreOferta,
+      presentacion: med.presentacion || undefined,
+    };
+  };
+
+  const handleVerProducto = (med: MedicamentoNormalizado) => {
+    const oferta = ofertasMap[med.idMedicamento];
+    const precioOriginal = oferta ? oferta.precioOriginal || med.precioVenta : med.precioVenta;
+    const precioEfectivo = oferta ? oferta.precioConDescuento : med.precioVenta;
+    setProductoSeleccionado({
+      ...med,
+      precioVenta: precioEfectivo,
+      precioOriginal,
+      porcentajeDescuento: oferta?.porcentajeDescuento,
+      nombreOferta: oferta?.nombreOferta,
+    });
+    setModalAbierto(true);
+  };
 
   if (cargando) {
     return <div className="flex items-center justify-center h-screen"><p className="text-xl">Cargando catálogo...</p></div>;
   }
 
   return (
-    <>
-      <div className="mb-6">
+    <div className="space-y-6">
+      <div>
         <h2 className="text-3xl font-bold text-gray-800">Catálogo de Medicamentos</h2>
         <p className="text-gray-600 mt-1">Explora todos nuestros productos disponibles</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input
             type="text"
-            placeholder="Buscar medicamento..."
+            placeholder="Buscar por nombre comercial o genérico..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             className="px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
           />
           <select
-            value={categoriaFiltro}
-            onChange={(e) => setCategoriaFiltro(e.target.value)}
+            value={categoriaSeleccionada}
+            onChange={(e) => setCategoriaSeleccionada(e.target.value)}
             className="px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
           >
-            <option value="">Todas las categorías</option>
-            {categorias.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
+            <option value="todas">Todas las categorías</option>
+            <option value="ofertas">Solo en oferta</option>
+            {categorias.map((cat) => (
+              <option key={cat.id_categoria} value={String(cat.id_categoria)}>
+                {cat.nombre}
+              </option>
             ))}
           </select>
         </div>
         <p className="text-sm text-gray-600 mt-2">
-          Mostrando {medicamentosFiltrados.length} de {medicamentos.length} medicamentos
+          Mostrando {filtrados.length} de {productos.length} medicamentos
         </p>
       </div>
 
-      <PanelContenido titulo={`Resultados (${medicamentosFiltrados.length})`} colSpan={3}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {medicamentosFiltrados.map((med) => (
-            <div key={med.idMedicamento} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-bold text-gray-900">{med.nombreComercial}</h3>
-                  <p className="text-xs text-gray-500">{med.nombreGenerico}</p>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                  (med.stock || 0) > 10 ? 'bg-green-100 text-green-700' :
-                  (med.stock || 0) > 5 ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-red-100 text-red-700'
-                }`}>
-                  {(med.stock || 0) > 10 ? 'Disponible' : (med.stock || 0) > 5 ? 'Pocas unidades' : 'Últimas unidades'}
-                </span>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Presentación:</span>
-                  <span className="font-medium">{med.presentacion || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tipo:</span>
-                  <span className="font-medium">{med.tipoProducto || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Requiere receta:</span>
-                  <span className={`font-medium ${med.requiereReceta ? 'text-yellow-600' : 'text-green-600'}`}>
-                    {med.requiereReceta ? 'Sí' : 'No'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="text-gray-600">Precio:</span>
-                  <span className="text-xl font-bold text-green-600">Bs. {Number(med.precioVenta).toFixed(2)}</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                disabled={(med.stock || 0) <= 0}
-                onClick={() =>
-                  addItem({
-                    idMedicamento: med.idMedicamento,
-                    nombreComercial: med.nombreComercial,
-                    nombreGenerico: med.nombreGenerico,
-                    precioVenta: Number(med.precioVenta),
-                    stock: Number(med.stock || 0),
-                    requiereReceta: Boolean(med.requiereReceta),
-                    imagen: med.imagen,
-                  })
-                }
-                className="w-full mt-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm font-semibold transition"
-              >
-                {(med.stock || 0) > 0 ? 'Agregar al carrito' : 'Sin stock'}
-              </button>
-            </div>
-          ))}
+      {filtrados.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-300">
+          <p className="text-xl text-gray-600 font-medium">No se encontraron medicamentos con esos filtros.</p>
         </div>
-        {medicamentosFiltrados.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <p className="text-lg">No se encontraron medicamentos con esos filtros.</p>
-          </div>
-        )}
-      </PanelContenido>
-    </>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {filtrados.map((med) => {
+            const oferta = ofertasMap[med.idMedicamento];
+            const precioOriginal = oferta ? oferta.precioOriginal || med.precioVenta : med.precioVenta;
+            const precioEfectivo = oferta ? oferta.precioConDescuento : med.precioVenta;
+            return (
+              <ProductCard
+                key={med.idMedicamento}
+                nombre={med.nombreComercial}
+                generico={med.nombreGenerico}
+                presentacion={med.presentacion}
+                imagen={med.imagen}
+                precio={precioEfectivo}
+                precioOriginal={precioOriginal}
+                porcentajeDescuento={oferta?.porcentajeDescuento}
+                stock={med.stock}
+                requiereReceta={med.requiereReceta}
+                badgeOferta={oferta ? "OFERTA" : undefined}
+                onClick={() => handleVerProducto(med)}
+                onAdd={() => addItem(toCartItem(med), 1)}
+                addLabel="Agregar"
+              />
+            );
+          })}
+        </div>
+      )}
+
+      <ProductModal
+        producto={productoSeleccionado}
+        isOpen={modalAbierto}
+        onClose={() => setModalAbierto(false)}
+        onAdd={(prod, cantidad) => {
+          const med = productos.find((m) => m.idMedicamento === Number(prod.idMedicamento ?? prod.id_medicamento ?? prod.id));
+          if (med) addItem(toCartItem(med), cantidad);
+        }}
+      />
+    </div>
   );
 }
 

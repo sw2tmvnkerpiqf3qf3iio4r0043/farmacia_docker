@@ -1,5 +1,12 @@
 const db = require('../db/db.js');
 
+function toBoolean(value, fallback = false) {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  return ['true', '1', 'yes', 'on'].includes(String(value).trim().toLowerCase());
+}
+
 async function listOfertas() {
   const query = 'SELECT * FROM oferta ORDER BY fecha_inicio DESC';
   const result = await db.query(query);
@@ -13,7 +20,10 @@ async function getOfertaById(id) {
 }
 
 async function createOferta(userId, data) {
-  const activoBool = data.activo === true || data.activo === 1 || data.activo === '1';
+  const activoBool = toBoolean(data.activo, false);
+  const porcentaje = data.porcentajeDescuento !== undefined
+    ? data.porcentajeDescuento
+    : data.porcentaje_descuento;
 
   const queryText = `
     INSERT INTO oferta (nombre_oferta, descripcion, porcentaje_descuento, fecha_inicio, fecha_fin, activo, created_by, created_at, updated_at)
@@ -22,9 +32,9 @@ async function createOferta(userId, data) {
   const values = [
     data.nombreOferta || data.nombre_oferta,
     data.descripcion || null,
-    Number(data.porcentajeDescuento || data.porcentaje_descuento),
+    porcentaje !== undefined ? Number(porcentaje) : 0,
     data.fechaInicio || data.fecha_inicio || new Date(),
-    data.fechaFin || data.fecha_fin,
+    data.fechaFin || data.fecha_fin || null,
     activoBool,
     userId
   ];
@@ -33,30 +43,36 @@ async function createOferta(userId, data) {
 }
 
 async function updateOferta(userId, id, data) {
-  const activoBool = data.activo !== undefined
-    ? (data.activo === true || data.activo === 1 || data.activo === '1')
-    : true;
+  const porcentaje = data.porcentajeDescuento !== undefined
+    ? data.porcentajeDescuento
+    : data.porcentaje_descuento;
+  const values = [
+    data.nombreOferta || data.nombre_oferta || null,
+    data.descripcion !== undefined ? data.descripcion : null,
+    porcentaje !== undefined ? Number(porcentaje) : null,
+    data.fechaInicio || data.fecha_inicio || null,
+    data.fechaFin || data.fecha_fin || null,
+  ];
+  const sets = [
+    'nombre_oferta = COALESCE($1, nombre_oferta)',
+    'descripcion = COALESCE($2, descripcion)',
+    'porcentaje_descuento = COALESCE($3, porcentaje_descuento)',
+    'fecha_inicio = COALESCE($4, fecha_inicio)',
+    'fecha_fin = COALESCE($5, fecha_fin)',
+  ];
 
+  if (data.activo !== undefined && data.activo !== null) {
+    values.push(toBoolean(data.activo));
+    sets.push(`activo = $${values.length}`);
+  }
+
+  values.push(id);
   const queryText = `
     UPDATE oferta SET
-      nombre_oferta = $1,
-      descripcion = $2,
-      porcentaje_descuento = $3,
-      fecha_inicio = $4,
-      fecha_fin = $5,
-      activo = $6,
+      ${sets.join(',\n      ')},
       updated_at = NOW()
-    WHERE id_oferta = $7 RETURNING *;
+    WHERE id_oferta = $${values.length} RETURNING *;
   `;
-  const values = [
-    data.nombreOferta || data.nombre_oferta,
-    data.descripcion,
-    data.porcentajeDescuento || data.porcentaje_descuento,
-    data.fechaInicio || data.fecha_inicio,
-    data.fechaFin || data.fecha_fin,
-    activoBool,
-    id
-  ];
   const result = await db.query(queryText, values);
   return result.rows[0];
 }

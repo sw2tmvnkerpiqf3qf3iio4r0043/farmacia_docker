@@ -8,6 +8,8 @@ const { recetaValidators } = require('../validators');
 const router = Router();
 
 router.get('/vigentes', recetaController.listVigentes);
+router.post('/mia', authenticate, recetaValidators.crearMia, validate, recetaController.createMia);
+router.get('/mias', authenticate, recetaController.listMias);
 router.get('/cliente/:idCliente', recetaValidators.idCliente, validate, recetaController.getByCliente);
 router.get('/', recetaController.list);
 router.get('/:id', recetaValidators.id, validate, recetaController.getById);

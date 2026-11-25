@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import PanelContenido from "../components/PanelContenido";
-import { useMedicamentos } from "../context/MedicamentoContext";
+import { useMedicamentos } from "../context/useMedicamentos";
 import { getProveedores } from "../api/apiProveedor";
 import { getLotes } from "../api/apiLote";
 import {

@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:15
+    image: postgres:15-alpine
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin123
@@ -9,10 +9,19 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./base/00_preparar_dump.sh:/docker-entrypoint-initdb.d/00_preparar_dump.sh:ro
+      - ./base/respaldo_farmacia.sql:/tmp/respaldo_farmacia.sql:ro
+      - ./base/02_produccion.sql:/docker-entrypoint-initdb.d/02_produccion.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d farmacia"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
 
   backend:
     build: ./farmacia-backend
-    pull_policy: missing  # <--- Agregado para evitar errores de red
+    pull_policy: missing
     ports:
       - "3001:3001"
     environment:
@@ -21,17 +30,33 @@ services:
       DB_NAME: farmacia
       DB_USER: admin
       DB_PASSWORD: admin123
+      JWT_SECRET: cambiar-este-secreto-en-produccion
       PORT: 3001
+    volumes:
+      - uploads:/app/uploads
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
 
   frontend:
-    build: ./farmacia-front/Farmacia_web
-    pull_policy: missing  # <--- Agregado para evitar errores de red
+    build:
+      context: ./farmacia-front/Farmacia_web
+      args:
+        VITE_API_BASE_URL: /api
+    pull_policy: missing
     ports:
       - "8080:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   pgdata:
+  uploads:

@@ -2,8 +2,10 @@ const db = require('../db/db');
 const ventaService = require('../services/ventaService');
 
 function belongsToUser(req, idCliente) {
-  if (!req.user || req.user.role !== 'user') return true;
-  return req.user.idCliente && Number(req.user.idCliente) === Number(idCliente);
+  if (!req.user) return false;
+  if (req.user.role !== 'user') return true;
+  if (!req.user.idCliente || idCliente === null || idCliente === undefined) return false;
+  return Number(req.user.idCliente) === Number(idCliente);
 }
 
 async function list(req, res, next) {
@@ -124,6 +126,18 @@ async function anular(req, res, next) {
   }
 }
 
+async function cambiarEstado(req, res, next) {
+  try {
+    const venta = await ventaService.cambiarEstado(req.params.id, req.body.estado);
+    if (!venta) {
+      return res.status(404).json({ error: 'NotFound', message: 'Venta no encontrada' });
+    }
+    res.json(venta);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // ✅ CORRECCIÓN: getMisCompras calcula el total sumando los subtotales
 async function getMisCompras(req, res, next) {
   try {
@@ -191,5 +205,6 @@ module.exports = {
   addPago,
   anularPago,
   anular,
+  cambiarEstado,
   getMisCompras,
 };

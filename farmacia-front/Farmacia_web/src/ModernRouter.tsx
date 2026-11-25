@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   createBrowserRouter,
+  Navigate,
   RouterProvider,
+  useLocation,
   type RouteObject,
 } from "react-router-dom";
 import { componentRegistry } from "./routesConfig";
@@ -22,61 +24,56 @@ interface DynamicRoute {
   onLogout?: () => void;
 }
 
+function RouteGuard({ allowedPaths, children }: { allowedPaths: string[]; children: ReactNode }) {
+  const { pathname } = useLocation();
+  if (!allowedPaths.includes(pathname)) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
 export function ModernRouter({ menuItems, usuario, onLogout }: DynamicRoute) {
-  const [router, setRouter] = useState<any>(null);
-
-  useEffect(() => {
-    function initRoutes() {
-      const dynamicRoutes: RouteObject[] = Array.isArray(menuItems)
-        ? menuItems.map((item) => {
-            if (item.url === "/") {
-              return {
-                index: true,
-                Component: item.component
-                  ? componentRegistry[item.component]
-                  : componentRegistry["DashboardDemo"] || Default,
-              };
-            }
-
+  const router = useMemo(() => {
+    const dynamicRoutes: RouteObject[] = Array.isArray(menuItems)
+      ? menuItems.map((item) => {
+          if (item.url === "/") {
             return {
-              path: item.url.replace(/^\//, ""),
+              index: true,
               Component: item.component
                 ? componentRegistry[item.component]
-                : Default,
+                : componentRegistry["DashboardDemo"] || Default,
             };
-          })
-        : [];
+          }
 
-      const routerInstance = createBrowserRouter([
-        {
-          path: "/",
-          element: <Layout usuario={usuario} menuItems={menuItems} onLogout={onLogout} />,
-          children: [
-            ...dynamicRoutes,
-            {
-              path: "*",
-              Component: Default,
-            },
-          ],
-        },
-      ]);
+          return {
+            path: item.url.replace(/^\//, ""),
+            Component: item.component ? componentRegistry[item.component] : Default,
+          };
+        })
+      : [];
 
-      setRouter(routerInstance);
-    }
-
-    initRoutes();
-  }, [menuItems, usuario, onLogout]);
-
-  if (!router) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mb-4"></div>
-          <p className="text-gray-600 text-lg">Preparando panel...</p>
-        </div>
-      </div>
+    const allowedPaths = Array.from(
+      new Set(["/", ...menuItems.map((item) => (item.url === "/" ? "/" : `/${item.url.replace(/^\//, "")}`))])
     );
-  }
+
+    return createBrowserRouter([
+      {
+        path: "/",
+        element: (
+          <RouteGuard allowedPaths={allowedPaths}>
+            <Layout usuario={usuario} menuItems={menuItems} onLogout={onLogout} />
+          </RouteGuard>
+        ),
+        children: [
+          ...dynamicRoutes,
+          {
+            path: "*",
+            Component: Default,
+          },
+        ],
+      },
+    ]);
+  }, [menuItems, usuario, onLogout]);
 
   return <RouterProvider router={router} />;
 }

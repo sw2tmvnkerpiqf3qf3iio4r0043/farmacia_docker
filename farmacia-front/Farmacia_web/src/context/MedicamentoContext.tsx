@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Medicamento } from "../api/apiMedicamento";
 import {
   getMedicamento,
@@ -6,96 +6,85 @@ import {
   updateMedicamento,
   deleteMedicamento,
 } from "../api/apiMedicamento";
+import { getApiErrorMessage } from "../api/apiErrors";
+import { MedicamentoContext, type MedicamentoItem } from "./medicamentoContextStore";
 
-interface MedicamentoContextType {
-  medicamentos: Medicamento[];
-  cargarDatos: () => Promise<void>;
-  agregarMedicamento: (med: Partial<Medicamento>) => Promise<boolean>;
-  actualizarMedicamento: (id: number, med: Partial<Medicamento>) => Promise<boolean>;
-  eliminarMedicamento: (id: number) => Promise<boolean>;
-  cargando: boolean;
+function buildPayload(med: Partial<MedicamentoItem>) {
+  return {
+    codigoBarras: med.codigoBarras,
+    nombreComercial: med.nombreComercial,
+    nombreGenerico: med.nombreGenerico,
+    descripcion: med.descripcion,
+    idCategoria: med.idCategoria,
+    tipoProducto: med.tipoProducto,
+    presentacion: med.presentacion,
+    precioCompra: med.precioCompra,
+    precioVenta: med.precioVenta,
+    stock: med.stock,
+    requiereReceta: med.requiereReceta,
+    imagen: med.imagen,
+    activo: med.activo,
+  } as Partial<Medicamento>;
 }
 
-const MedicamentoContext = createContext<MedicamentoContextType | undefined>(undefined);
-
 export function MedicamentoProvider({ children }: { children: ReactNode }) {
-  const [medicamentos, setMedicamentos] = useState<Medicamento[]>([]);
+  const [medicamentos, setMedicamentos] = useState<MedicamentoItem[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
 
   const cargarDatos = async () => {
     try {
       setCargando(true);
-      const datos = await getMedicamento(); 
-      setMedicamentos(datos);
-    } catch (error) {
-      console.error("Error al cargar:", error);
+      setError("");
+      const datos = await getMedicamento();
+      setMedicamentos(datos as MedicamentoItem[]);
+    } catch (err) {
+      const mensaje = getApiErrorMessage(err, "No se pudieron cargar los medicamentos");
+      setError(mensaje);
     } finally {
       setCargando(false);
     }
   };
 
   useEffect(() => {
-    cargarDatos();
+    void cargarDatos();
   }, []);
 
-  const agregarMedicamento = async (med: Partial<Medicamento>): Promise<boolean> => {
+  const agregarMedicamento = async (med: Partial<MedicamentoItem>): Promise<boolean> => {
     try {
-      await createMedicamento({
-        codigoBarras: med.codigoBarras,
-        nombreComercial: med.nombreComercial,
-        nombreGenerico: med.nombreGenerico,
-        idCategoria: med.idCategoria || 1,
-        tipoProducto: med.tipoProducto,
-        presentacion: med.presentacion,
-        precioCompra: med.precioCompra,
-        precioVenta: med.precioVenta,
-        stock: med.stock || 0,
-        requiereReceta: med.requiereReceta,
-        activo: med.activo !== undefined ? med.activo : true,
-      });
+      setError("");
+      await createMedicamento(buildPayload(med));
       await cargarDatos();
       return true;
-    } catch (error) {
-      console.error("Error al crear:", error);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "No se pudo crear el medicamento"));
       return false;
     }
   };
 
   const actualizarMedicamento = async (
     id: number,
-    med: Partial<Medicamento>
+    med: Partial<MedicamentoItem>
   ): Promise<boolean> => {
     try {
-      await updateMedicamento(id, {
-        codigoBarras: med.codigoBarras,
-        nombreComercial: med.nombreComercial,
-        nombreGenerico: med.nombreGenerico,
-        idCategoria: med.idCategoria,
-        tipoProducto: med.tipoProducto,
-        presentacion: med.presentacion,
-        precioCompra: med.precioCompra,
-        precioVenta: med.precioVenta,
-        stock: med.stock,
-        requiereReceta: med.requiereReceta,
-        activo: med.activo,
-      });
+      setError("");
+      await updateMedicamento(id, buildPayload(med));
       await cargarDatos();
       return true;
-    } catch (error) {
-      console.error("Error al actualizar:", error);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "No se pudo actualizar el medicamento"));
       return false;
     }
   };
 
   const eliminarMedicamento = async (id: number): Promise<boolean> => {
     try {
+      setError("");
       await deleteMedicamento(id);
-      await cargarDatos(); 
+      await cargarDatos();
       return true;
-    } catch (error: any) {
-      const msg = error.response?.data?.message || error.response?.data?.error || error.message || "Error desconocido";
-      alert("ERROR AL ELIMINAR:\n" + msg);
-      console.error("Detalle completo del error:", error);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "No se pudo eliminar el medicamento"));
       return false;
     }
   };
@@ -109,19 +98,11 @@ export function MedicamentoProvider({ children }: { children: ReactNode }) {
         actualizarMedicamento,
         eliminarMedicamento,
         cargando,
+        error,
+        clearError: () => setError(""),
       }}
     >
-      {cargando ? (
-        <div className="p-10 text-center">Cargando datos del servidor...</div>
-      ) : (
-        children
-      )}
+      {children}
     </MedicamentoContext.Provider>
   );
-}
-
-export function useMedicamentos() {
-  const context = useContext(MedicamentoContext);
-  if (!context) throw new Error("useMedicamentos debe usarse dentro de MedicamentoProvider");
-  return context;
 }

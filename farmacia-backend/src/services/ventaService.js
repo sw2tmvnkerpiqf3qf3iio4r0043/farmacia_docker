@@ -1,6 +1,7 @@
 const db = require('../db/db');
 
-const ESTADOS_VENTA = ['pendiente', 'completada', 'anulada', 'devuelta_parcial', 'devuelta_total'];
+const ESTADOS_VENTA = ['pendiente', 'en_camino', 'completada', 'anulada', 'devuelta_parcial', 'devuelta_total'];
+const ESTADOS_CAMBIABLES = ['pendiente', 'en_camino', 'completada'];
 
 function httpError(status, message) {
   const err = new Error(message);
@@ -49,6 +50,7 @@ function formatVenta(row) {
     fechaVenta: row.fecha_venta,
     totalVenta,
     estado: row.estado,
+    idUbicacion: row.id_ubicacion || null,
     observaciones: row.observaciones,
     totalPagado,
     saldo: Number((totalVenta - totalPagado).toFixed(2)),
@@ -267,6 +269,22 @@ async function validarCliente(client, idCliente) {
   return clienteId;
 }
 
+async function validarUbicacion(client, idUbicacion) {
+  if (idUbicacion === null || idUbicacion === undefined || idUbicacion === '') return null;
+  const ubicacionId = Number(idUbicacion);
+  if (!Number.isInteger(ubicacionId) || ubicacionId <= 0) {
+    throw httpError(400, 'El ID de la ubicación debe ser entero');
+  }
+  const result = await client.query(
+    'SELECT 1 FROM ubicacion_inventario WHERE id_ubicacion = $1',
+    [ubicacionId]
+  );
+  if (result.rows.length === 0) {
+    throw httpError(400, `La ubicación ${ubicacionId} no existe`);
+  }
+  return ubicacionId;
+}
+
 async function prepararDetalles(client, detalles) {
   if (!Array.isArray(detalles) || detalles.length === 0) {
     throw httpError(400, 'La venta debe incluir al menos un detalle');
@@ -420,6 +438,10 @@ async function crearVenta(userId, data) {
       client,
       data.idCliente !== undefined ? data.idCliente : data.id_cliente
     );
+    const ubicacionId = await validarUbicacion(
+      client,
+      data.idUbicacion !== undefined ? data.idUbicacion : data.id_ubicacion
+    );
 
     const detalles = await prepararDetalles(client, data.detalles);
     const totalVenta = Number(
@@ -435,10 +457,10 @@ async function crearVenta(userId, data) {
     const fechaVenta = data.fechaVenta !== undefined ? data.fechaVenta : data.fecha_venta;
 
     const ventaResult = await client.query(
-      `INSERT INTO venta (id_empleado, id_cliente, fecha_venta, total_venta, estado, observaciones)
-       VALUES ($1, $2, COALESCE($3, CURRENT_TIMESTAMP), 0, 'pendiente', $4)
+      `INSERT INTO venta (id_empleado, id_cliente, fecha_venta, total_venta, estado, observaciones, id_ubicacion)
+       VALUES ($1, $2, COALESCE($3, CURRENT_TIMESTAMP), 0, 'pendiente', $4, $5)
        RETURNING id_venta`,
-      [empleadoId, clienteId, fechaVenta || null, data.observaciones || null]
+      [empleadoId, clienteId, fechaVenta || null, data.observaciones || null, ubicacionId]
     );
     const idVenta = ventaResult.rows[0].id_venta;
 
@@ -492,6 +514,7 @@ async function crearVenta(userId, data) {
       idVenta: idVenta,
       totalVenta: totalVenta,
       estado: estadoSolicitado,
+      idUbicacion: ubicacionId,
       mensaje: 'Venta creada exitosamente'
     };
     
@@ -728,6 +751,54 @@ async function anularVenta(idVenta, userId, data = {}) {
   }
 }
 
+async function cambiarEstado(idVenta, estado) {
+  if (!ESTADOS_CAMBIABLES.includes(estado)) {
+    throw httpError(400, `El estado debe ser uno de: ${ESTADOS_CAMBIABLES.join(', ')}`);
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const actual = await client.query(
+      'SELECT id_venta, total_venta FROM venta WHERE id_venta = $1 FOR UPDATE',
+      [idVenta]
+    );
+    if (!actual.rows[0]) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    if (estado === 'completada') {
+      const detalles = await client.query(
+        'SELECT COUNT(*)::integer AS total FROM detalle_venta WHERE id_venta = $1',
+        [idVenta]
+      );
+      if (Number(detalles.rows[0].total) === 0) {
+        throw httpError(400, 'No se puede completar la venta porque no tiene detalles');
+      }
+
+      const total = Number(actual.rows[0].total_venta || 0);
+      const totalPagado = await getTotalPagado(idVenta, client, true);
+      if (totalPagado < total) {
+        throw httpError(
+          400,
+          `No se puede completar la venta. Total: ${total.toFixed(2)}, pagado confirmado: ${totalPagado.toFixed(2)}`
+        );
+      }
+    }
+
+    await client.query('UPDATE venta SET estado = $1 WHERE id_venta = $2', [estado, idVenta]);
+    await client.query('COMMIT');
+    return getVentaById(idVenta);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   ESTADOS_VENTA,
   listVentas,
@@ -739,4 +810,5 @@ module.exports = {
   registrarPago,
   anularPago,
   anularVenta,
+  cambiarEstado,
 };

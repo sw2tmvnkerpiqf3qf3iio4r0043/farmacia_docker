@@ -1,8 +1,7 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { userService } from "../services/userService";
-import type { User } from "../types/user";
+import { userService, type AppUser } from "../services/userService";
 
-export function useUsers(): UseQueryResult<User[], Error> {
+export function useUsers(): UseQueryResult<AppUser[], Error> {
   return useQuery({
     queryKey: ["users"],
     queryFn: userService.getAll,
