@@ -1,0 +1,54 @@
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: farmacia
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d farmacia"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  backend:
+    image: sole950/farmacia-backend:latest
+    ports:
+      - "3001:3001"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: farmacia
+      DB_USER: admin
+      DB_PASSWORD: admin123
+      JWT_SECRET: cambiar-este-secreto-en-produccion
+      PORT: 3001
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      - db
+    deploy:
+      replicas: 1
+
+  frontend:
+    image: sole950/farmacia-frontend:latest
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    deploy:
+      replicas: 1
+
+volumes:
+  pgdata:
+  uploads:
