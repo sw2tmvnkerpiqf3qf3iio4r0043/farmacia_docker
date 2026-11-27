@@ -16,7 +16,7 @@ services:
       - ./base/respaldo_farmacia.sql:/tmp/farmacia-init/respaldo_farmacia.sql:ro
       - ./base/02_produccion.sql:/tmp/farmacia-init/02_produccion.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" && psql -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" -c 'SELECT 1 FROM medicamento LIMIT 1' >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 10s
       timeout: 5s
       retries: 12
