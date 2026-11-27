@@ -1,21 +1,46 @@
 #!/bin/sh
-set -e
+(
+  set -e
 
-DUMP_ORIGINAL=/docker-entrypoint-initdb.d/respaldo_farmacia.sql
-DUMP_LIMPIO=/tmp/respaldo_farmacia_limpio.sql
+  usuario=${POSTGRES_USER:-admin}
+  base_datos=${POSTGRES_DB:-farmacia}
+  init_dir=/tmp/farmacia-init
+  trabajo=/tmp/farmacia-init-trabajo
+  dump="$init_dir/respaldo_farmacia.sql"
+  produccion="$init_dir/02_produccion.sql"
+  mkdir -p "$trabajo"
 
-echo "[init] Limpiando dump de PostgreSQL..."
-sed \
-  -e '/^\\restrict /d' \
-  -e '/^\\unrestrict /d' \
-  -e '/^SET transaction_timeout = /d' \
-  -e "s/OWNER TO postgres;/OWNER TO \"${POSTGRES_USER}\";/g" \
-  "$DUMP_ORIGINAL" > "$DUMP_LIMPIO"
+  preparar() {
+    origen=$1
+    destino=$2
+    temporal="$destino.sinbom"
 
-echo "[init] Cargando dump limpio en $POSTGRES_DB..."
-psql -v ON_ERROR_STOP=1 \
-     --username "$POSTGRES_USER" \
-     --dbname "$POSTGRES_DB" \
-     -f "$DUMP_LIMPIO"
+    if [ "$(head -c 3 "$origen" | od -An -tx1 | tr -d ' \n')" = "efbbbf" ]; then
+      tail -c +4 "$origen" > "$temporal"
+    else
+      cat "$origen" > "$temporal"
+    fi
 
-echo "[init] Dump cargado correctamente."
+    tr -d '\r' < "$temporal" \
+      | sed \
+        -e '/^\\restrict /d' \
+        -e '/^\\unrestrict /d' \
+        -e '/^SET transaction_timeout = /d' \
+        -e "s/OWNER TO postgres;/OWNER TO \"${usuario}\";/g" \
+        > "$destino"
+
+    rm -f "$temporal"
+  }
+
+  echo "[init] Preparando dump para PostgreSQL 18..."
+  preparar "$dump" "$trabajo/01_dump.sql"
+  preparar "$produccion" "$trabajo/02_produccion.sql_limpio"
+
+  echo "[init] Cargando dump en $base_datos como $usuario..."
+  psql -v ON_ERROR_STOP=1 --username "$usuario" --dbname "$base_datos" -f "$trabajo/01_dump.sql"
+
+  echo "[init] Aplicando ajustes de produccion..."
+  psql -v ON_ERROR_STOP=1 --username "$usuario" --dbname "$base_datos" -f "$trabajo/02_produccion.sql_limpio"
+
+  echo "[init] Inicializacion completada."
+)
