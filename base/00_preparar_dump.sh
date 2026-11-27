@@ -1,8 +1,7 @@
-﻿#!/bin/sh
+#!/bin/sh
 set -e
 
-# En K8s el ConfigMap se monta en /docker-entrypoint-initdb.d
-DUMP_ORIGINAL=/docker-entrypoint-initdb.d/respaldo_farmacia.sql.txt
+DUMP_ORIGINAL=/docker-entrypoint-initdb.d/respaldo_farmacia.sql
 DUMP_LIMPIO=/tmp/respaldo_farmacia_limpio.sql
 
 echo "[init] Limpiando dump de PostgreSQL..."
