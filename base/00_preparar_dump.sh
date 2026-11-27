@@ -1,4 +1,4 @@
-#!/bin/sh
+﻿#!/bin/sh
 set -e
 
 # En K8s el ConfigMap se monta en /docker-entrypoint-initdb.d

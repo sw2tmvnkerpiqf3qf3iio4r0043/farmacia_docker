@@ -12,11 +12,13 @@ services:
       - ./base/00_preparar_dump.sh:/docker-entrypoint-initdb.d/00_preparar_dump.sh:ro
       - ./base/respaldo_farmacia.sql:/tmp/respaldo_farmacia.sql:ro
       - ./base/02_produccion.sql:/docker-entrypoint-initdb.d/02_produccion.sql:ro
+    # >>> CAMBIO: Healthcheck que espera a que las tablas existan (no solo que Postgres arranque)
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d farmacia"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
+      test: ["CMD-SHELL", "pg_isready -U admin -d farmacia && psql -U admin -d farmacia -c 'SELECT 1 FROM medicamento LIMIT 1;' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
     restart: unless-stopped
 
   backend:
@@ -37,7 +39,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    restart: unless-stopped
+    # >>> CAMBIO: Healthcheck propio para que el frontend espere a que esté listo
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3001/api/medicamento/estadisticas', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    # >>> CAMBIO: Reintenta automáticamente si falla
+    restart: on-failure
 
   frontend:
     build:

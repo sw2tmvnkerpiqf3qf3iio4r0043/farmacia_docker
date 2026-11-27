@@ -1,4 +1,4 @@
-UPDATE medicamento
+﻿UPDATE medicamento
    SET imagen = regexp_replace(imagen, '^https?://[^/]+/uploads/', '/uploads/')
  WHERE imagen ~ '^https?://[^/]+/uploads/';
 

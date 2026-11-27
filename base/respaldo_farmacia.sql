@@ -1,4 +1,4 @@
---
+﻿--
 -- PostgreSQL database dump
 --
 
@@ -33,7 +33,7 @@ DECLARE
     v_id_lote INTEGER;
 BEGIN
     -- Buscamos directamente en la tabla inventario el lote con stock
-    -- para el medicamento que se está vendiendo.
+    -- para el medicamento que se estÃ¡ vendiendo.
     SELECT i.id_lote INTO v_id_lote
     FROM inventario i
     JOIN lote_medicamento l ON l.id_lote = i.id_lote
@@ -133,7 +133,7 @@ BEGIN
 
     v_cantidad_restante := NEW.cantidad;
 
-    -- ✅ CORRECCIÓN: Buscar inventario directamente por id_medicamento
+    -- âœ… CORRECCIÃ“N: Buscar inventario directamente por id_medicamento
     FOR v_lote IN 
         SELECT i.id_inventario, i.cantidad_actual
         FROM inventario i
@@ -151,7 +151,7 @@ BEGIN
         IF v_lote.cantidad_actual >= v_cantidad_restante THEN
             INSERT INTO movimiento_inventario (id_inventario, tipo_movimiento, cantidad, motivo, id_empleado)
             VALUES (v_lote.id_inventario, 'salida', v_cantidad_restante, 
-                    'Venta automática ID: ' || NEW.id_venta, v_id_empleado);
+                    'Venta automÃ¡tica ID: ' || NEW.id_venta, v_id_empleado);
             
             -- Descontar del inventario
             UPDATE inventario SET cantidad_actual = cantidad_actual - v_cantidad_restante WHERE id_inventario = v_lote.id_inventario;
@@ -160,7 +160,7 @@ BEGIN
         ELSE
             INSERT INTO movimiento_inventario (id_inventario, tipo_movimiento, cantidad, motivo, id_empleado)
             VALUES (v_lote.id_inventario, 'salida', v_lote.cantidad_actual, 
-                    'Venta automática ID: ' || NEW.id_venta, v_id_empleado);
+                    'Venta automÃ¡tica ID: ' || NEW.id_venta, v_id_empleado);
             
             -- Descontar del inventario
             UPDATE inventario SET cantidad_actual = cantidad_actual - v_lote.cantidad_actual WHERE id_inventario = v_lote.id_inventario;
@@ -192,7 +192,7 @@ CREATE FUNCTION public.fn_validar_lote_venta() RETURNS trigger
 DECLARE
     v_lote RECORD;
 BEGIN
-    -- Buscar la información del lote
+    -- Buscar la informaciÃ³n del lote
     SELECT id_medicamento, estado, fecha_vencimiento 
     INTO v_lote
     FROM lote_medicamento 
@@ -207,14 +207,14 @@ BEGIN
         RAISE EXCEPTION 'El lote % no corresponde al medicamento %.', NEW.id_lote, NEW.id_medicamento;
     END IF;
 
-    -- Validar que el lote esté activo
+    -- Validar que el lote estÃ© activo
     IF v_lote.estado <> 'activo' THEN
-        RAISE EXCEPTION 'El lote % no está activo.', NEW.id_lote;
+        RAISE EXCEPTION 'El lote % no estÃ¡ activo.', NEW.id_lote;
     END IF;
 
-    -- Validar que no esté vencido
+    -- Validar que no estÃ© vencido
     IF v_lote.fecha_vencimiento < CURRENT_DATE THEN
-        RAISE EXCEPTION 'El lote % está vencido.', NEW.id_lote;
+        RAISE EXCEPTION 'El lote % estÃ¡ vencido.', NEW.id_lote;
     END IF;
 
     RETURN NEW;
@@ -242,7 +242,7 @@ BEGIN
 
     SELECT total_venta INTO v_total FROM venta WHERE id_venta = NEW.id_venta;
 
-    -- Si el total es 0, la venta se está creando; dejar pasar el pago
+    -- Si el total es 0, la venta se estÃ¡ creando; dejar pasar el pago
     IF v_total = 0 THEN
         RETURN NEW;
     END IF;
@@ -531,7 +531,7 @@ BEGIN
         WHERE id_empleado = NEW.id_empleado;
 
         IF v_empleado_activo IS DISTINCT FROM TRUE THEN
-            RAISE EXCEPTION 'El empleado % está inactivo.', NEW.id_empleado;
+            RAISE EXCEPTION 'El empleado % estÃ¡ inactivo.', NEW.id_empleado;
         END IF;
     END IF;
 
@@ -541,7 +541,7 @@ BEGIN
         WHERE id_cliente = NEW.id_cliente;
 
         IF v_cliente_activo IS DISTINCT FROM TRUE THEN
-            RAISE EXCEPTION 'El cliente % está inactivo.', NEW.id_cliente;
+            RAISE EXCEPTION 'El cliente % estÃ¡ inactivo.', NEW.id_cliente;
         END IF;
     END IF;
 
@@ -580,11 +580,11 @@ BEGIN
     END IF;
 
     IF v_lote.estado <> 'activo' THEN
-        RAISE EXCEPTION 'El lote % no está activo.', NEW.id_lote;
+        RAISE EXCEPTION 'El lote % no estÃ¡ activo.', NEW.id_lote;
     END IF;
 
     IF v_lote.fecha_vencimiento < CURRENT_DATE THEN
-        RAISE EXCEPTION 'El lote % está vencido.', NEW.id_lote;
+        RAISE EXCEPTION 'El lote % estÃ¡ vencido.', NEW.id_lote;
     END IF;
 
     RETURN NEW;
@@ -666,7 +666,7 @@ BEGIN
     WHERE id_metodo_pago = NEW.id_metodo_pago;
 
     IF NOT FOUND OR v_metodo_activo IS NOT TRUE THEN
-        RAISE EXCEPTION 'El método de pago % no está activo.', NEW.id_metodo_pago;
+        RAISE EXCEPTION 'El mÃ©todo de pago % no estÃ¡ activo.', NEW.id_metodo_pago;
     END IF;
 
     SELECT estado INTO v_estado_venta
@@ -713,7 +713,7 @@ BEGIN
 
     IF NEW.receta_presentada IS NOT TRUE OR NEW.id_receta IS NULL THEN
         RAISE EXCEPTION
-            'El medicamento % requiere receta médica presentada y registrada.',
+            'El medicamento % requiere receta mÃ©dica presentada y registrada.',
             NEW.id_medicamento;
     END IF;
 
@@ -729,7 +729,7 @@ BEGIN
     WHERE v.id_venta = NEW.id_venta;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'No se encontró la venta % o la receta %.', NEW.id_venta, NEW.id_receta;
+        RAISE EXCEPTION 'No se encontrÃ³ la venta % o la receta %.', NEW.id_venta, NEW.id_receta;
     END IF;
 
     IF v_receta.cliente_venta IS NULL THEN
@@ -737,11 +737,11 @@ BEGIN
     END IF;
 
     IF v_receta.estado <> 'vigente' THEN
-        RAISE EXCEPTION 'La receta % no está vigente.', NEW.id_receta;
+        RAISE EXCEPTION 'La receta % no estÃ¡ vigente.', NEW.id_receta;
     END IF;
 
     IF v_receta.fecha_vencimiento < CURRENT_DATE THEN
-        RAISE EXCEPTION 'La receta % está vencida.', NEW.id_receta;
+        RAISE EXCEPTION 'La receta % estÃ¡ vencida.', NEW.id_receta;
     END IF;
 
     IF v_receta.cliente_receta <> v_receta.cliente_venta THEN
@@ -758,7 +758,7 @@ BEGIN
 
     IF NOT FOUND THEN
         RAISE EXCEPTION
-            'El medicamento % no está incluido en la receta %.',
+            'El medicamento % no estÃ¡ incluido en la receta %.',
             NEW.id_medicamento,
             NEW.id_receta;
     END IF;
@@ -1937,7 +1937,7 @@ ALTER TABLE public.users OWNER TO postgres;
 -- Name: TABLE users; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON TABLE public.users IS 'Tabla de usuarios para autenticación y roles del sistema';
+COMMENT ON TABLE public.users IS 'Tabla de usuarios para autenticaciÃ³n y roles del sistema';
 
 
 --
@@ -2317,15 +2317,15 @@ COPY public.alergia_principio_activo (id_alergia, id_principio_activo) FROM stdi
 --
 
 COPY public.categoria (id_categoria, nombre, descripcion, tipo_categoria, tipo_enfermedad, id_categoria_padre, fecha_creacion) FROM stdin;
-5	Antigripales	Medicamentos para gripe y vías respiratorias	medicamento	estacional	\N	2026-09-23 22:24:45.989507
-6	Cardiovasculares	Medicamentos para corazón y presión	medicamento	cronica	\N	2026-09-23 22:24:45.989507
+5	Antigripales	Medicamentos para gripe y vÃ­as respiratorias	medicamento	estacional	\N	2026-09-23 22:24:45.989507
+6	Cardiovasculares	Medicamentos para corazÃ³n y presiÃ³n	medicamento	cronica	\N	2026-09-23 22:24:45.989507
 7	Vitaminas y Suplementos	Vitaminas, minerales y suplementos	nutricion	bienestar	\N	2026-09-23 22:24:45.989507
-8	Dermocosmética	Cuidado de la piel y belleza	dermocosmetica	cuidado_personal	\N	2026-09-23 22:24:45.989507
+8	DermocosmÃ©tica	Cuidado de la piel y belleza	dermocosmetica	cuidado_personal	\N	2026-09-23 22:24:45.989507
 9	Higiene Personal	Productos de higiene corporal y bucal	higiene	cuidado_personal	\N	2026-09-23 22:24:45.989507
-10	Bebés y Puericultura	Productos para bebés	bebe	infantil	\N	2026-09-23 22:24:45.989507
+10	BebÃ©s y Puericultura	Productos para bebÃ©s	bebe	infantil	\N	2026-09-23 22:24:45.989507
 2	Antiinflamatorios	Medicamentos antiinflamatorios no esteroideos	medicamento	aguda	3	2026-09-23 22:24:45.989507
-1	Analgésicos	Medicamentos para el dolor y la fiebre	medicamento	aguda	2	2026-09-23 22:24:45.989507
-3	Antibióticos	Medicamentos para infecciones bacterianas	medicamento	aguda	1	2026-09-23 22:24:45.989507
+1	AnalgÃ©sicos	Medicamentos para el dolor y la fiebre	medicamento	aguda	2	2026-09-23 22:24:45.989507
+3	AntibiÃ³ticos	Medicamentos para infecciones bacterianas	medicamento	aguda	1	2026-09-23 22:24:45.989507
 \.
 
 
@@ -2336,8 +2336,8 @@ COPY public.categoria (id_categoria, nombre, descripcion, tipo_categoria, tipo_e
 --
 
 COPY public.cliente (id_cliente, id_persona, fecha_nacimiento, condiciones_cronicas, es_local, activo) FROM stdin;
-1	1	1985-03-15	Gastritis crónica	t	t
-2	2	1990-07-22	Hipertensión	t	t
+1	1	1985-03-15	Gastritis crÃ³nica	t	t
+2	2	1990-07-22	HipertensiÃ³n	t	t
 3	4	\N	\N	t	t
 5	6	\N	\N	t	t
 \.
@@ -2383,7 +2383,7 @@ COPY public.detalle_compra (id_detalle_compra, id_compra, id_medicamento, id_lot
 --
 
 COPY public.detalle_receta (id_detalle_receta, id_receta, id_medicamento, dosis, frecuencia, via_administracion, duracion_tratamiento, cantidad_prescrita, indicaciones) FROM stdin;
-1	1	3	400 mg	Cada 8 horas	Oral	7 días	21	Tomar con abundante agua.
+1	1	3	400 mg	Cada 8 horas	Oral	7 dÃ­as	21	Tomar con abundante agua.
 \.
 
 
@@ -2562,8 +2562,8 @@ COPY public.lote_medicamento (id_lote, id_medicamento, id_proveedor, numero_lote
 3	3	1	LOT-2026-003	2025-12-15	2026-12-15	30	activo	2026-10-08 16:45:29.132324	\N
 5	4	1	LOT-2026-005	2026-01-10	2027-01-10	25	activo	2026-10-08 16:45:29.132324	\N
 4	2	1	22	2026-10-08	2027-10-08	10	activo	2026-10-08 16:45:29.132324	string
-7	10	\N	LEGACY-10-20261025212410	2026-10-25	2028-10-25	50	activo	2026-10-25 21:24:09.002606	Lote creado por migración 002 para respaldar stock legado.
-8	5	\N	LEGACY-5-20261025212411	2026-10-25	2027-11-10	2	activo	2026-10-25 21:24:09.002606	Lote creado por migración 002 para respaldar stock legado.
+7	10	\N	LEGACY-10-20261025212410	2026-10-25	2028-10-25	50	activo	2026-10-25 21:24:09.002606	Lote creado por migraciÃ³n 002 para respaldar stock legado.
+8	5	\N	LEGACY-5-20261025212411	2026-10-25	2027-11-10	2	activo	2026-10-25 21:24:09.002606	Lote creado por migraciÃ³n 002 para respaldar stock legado.
 \.
 
 
@@ -2576,7 +2576,7 @@ COPY public.lote_medicamento (id_lote, id_medicamento, id_proveedor, numero_lote
 COPY public.medicamento (id_medicamento, codigo_barras, nombre_comercial, nombre_generico, id_categoria, tipo_producto, presentacion, precio_compra, precio_venta, requiere_receta, activo, created_at, updated_at, created_by, updated_by, stock, imagen, descripcion) FROM stdin;
 2	777-12345	Paracetamol 500mg	Paracetamol	1	Analgesico	Caja x 10	5.00	10.00	0	1	2026-09-11 09:44:03.988488	2026-11-15 16:22:46.674566	\N	1	700	/uploads/med-1790795529641-922796857.jpg	USO: Analgesico y antipiretico de uso comun.\n\nBENEFICIOS: Alivia dolores leves a moderados como dolor de cabeza, muscular, dental y menstrual. Reduce la fiebre.\n\nMODO DE USO: Tomar 1 a 2 comprimidos cada 6 a 8 horas. No exceder 4 gramos (8 comprimidos) en 24 horas.\n\nCONTRAINDICACIONES: No usar en caso de enfermedad hepatica grave o alergia al paracetamol.\n\nPRECAUCIONES: Evitar el consumo de alcohol durante el tratamiento. Seguro en embarazo bajo supervision medica.
 3	888-99999	Ibuprofeno 400mg	Ibuprofeno	2	Antiinflamatorio	Caja x 20	4.00	8.50	0	1	2026-09-11 09:44:03.988488	2026-11-15 16:27:02.283948	\N	1	200	/uploads/med-1791057459616-240001454.jpg	USO: Antibiotico de amplio espectro del grupo de las penicilinas.\n\nBENEFICIOS: Trata infecciones bacterianas como otitis, sinusitis, faringitis, infecciones urinarias y respiratorias.\n\nMODO DE USO: Tomar 1 capsula cada 8 horas durante 7 a 10 dias. Completar el tratamiento aunque los sintomas desaparezcan.\n\nCONTRAINDICACIONES: No usar en caso de alergia a penicilinas o cefalosporinas.\n\nPRECAUCIONES: Puede causar diarrea. Tomar con o sin alimentos. REQUIERE RECETA MEDICA.
-10	777-99999	Dipirona 500mg	Dipirona	1	Analgésico	Caja x 20	3.50	9.00	1	1	2026-09-21 09:51:54.262147	2026-10-25 21:34:58.437969	1	1	50	/uploads/med-1791057696134-752469804.jpg	\N
+10	777-99999	Dipirona 500mg	Dipirona	1	AnalgÃ©sico	Caja x 20	3.50	9.00	1	1	2026-09-21 09:51:54.262147	2026-10-25 21:34:58.437969	1	1	50	/uploads/med-1791057696134-752469804.jpg	\N
 4	111-22222	Amoxicilina 500mg	Amoxicilina	3	Antibiotico	Caja x 21	7.50	15.00	1	1	2026-09-11 09:44:03.988488	2026-10-28 00:04:37.457167	\N	1	85	/uploads/med-1791057637568-80357205.png	USO: Inhibidor de la bomba de protones (IBP). Reduce la produccion de acido gastrico.\n\nBENEFICIOS: Trata ulcera gastrica y duodenal, reflujo gastroesofagico (ERGE), gastritis y sindrome de Zollinger-Ellison.\n\nMODO DE USO: Tomar 1 capsula en ayunas, 30 minutos antes del desayuno. Tratamiento tipico de 4 a 8 semanas.\n\nCONTRAINDICACIONES: No usar en caso de alergia a omeprazol o benzimidazoles.\n\nPRECAUCIONES: Uso prolongado puede afectar absorcion de vitamina B12 y calcio. Consultar al medico si los sintomas persisten.
 5	333-44444	Omeprazol 20mg	Omeprazol	4	Gastrointestinal	Caja x 14	6.00	12.00	0	1	2026-09-11 09:44:03.988488	2026-11-15 16:51:45.637508	\N	1	193	/uploads/med-1791057706321-537117681.webp	USO: Antiinflamatorio no esteroideo (AINE).\n\nBENEFICIOS: Alivia el dolor leve a moderado, reduce la fiebre y disminuye la inflamacion.\n\nMODO DE USO: Tomar 1 comprimido cada 8 horas con alimentos. No exceder 3 comprimidos en 24 horas.\n\nCONTRAINDICACIONES: No usar en caso de ulcera gastrica, problemas renales o alergias a AINEs.\n\nPRECAUCIONES: Consultar al medico si los sintomas persisten por mas de 5 dias.
 \.
@@ -2619,23 +2619,23 @@ COPY public.metodo_pago (id_metodo_pago, nombre, activo) FROM stdin;
 --
 
 COPY public.movimiento_inventario (id_movimiento, id_inventario, tipo_movimiento, cantidad, motivo, id_empleado, fecha_movimiento) FROM stdin;
-12	8	salida	1	Venta automática ID: 197	\N	2026-11-15 16:17:50.366609
-13	3	salida	4	Venta automática ID: 198	\N	2026-11-15 16:21:07.691158
-14	8	salida	100	Venta automática ID: 199	\N	2026-11-15 16:21:45.344414
-15	3	salida	1	Venta automática ID: 200	\N	2026-11-15 16:22:08.58719
-16	8	salida	1	Venta automática ID: 201	\N	2026-11-15 16:22:46.674566
-17	1	salida	200	Venta automática ID: 201	\N	2026-11-15 16:22:46.674566
-18	8	salida	9	Venta automática ID: 202	\N	2026-11-15 16:25:11.374224
-19	8	salida	90	Venta automática ID: 203	\N	2026-11-15 16:25:37.829406
-20	3	salida	5	Venta automática ID: 204	\N	2026-11-15 16:26:05.405462
-21	8	salida	300	Venta automática ID: 205	\N	2026-11-15 16:26:35.99755
-22	3	salida	90	Venta automática ID: 206	\N	2026-11-15 16:27:02.283948
-23	8	salida	1	Venta automática ID: 207	\N	2026-11-15 16:28:59.530413
-24	8	salida	199	Venta automática ID: 208	\N	2026-11-15 16:29:31.303275
-25	8	salida	2	Venta automática ID: 209	\N	2026-11-15 16:45:29.857558
-26	8	salida	2	Venta automática ID: 210	\N	2026-11-15 16:50:59.547467
-27	8	salida	2	Venta automática ID: 211	\N	2026-11-15 16:51:21.85553
-28	8	salida	1	Venta automática ID: 212	\N	2026-11-15 16:51:45.637508
+12	8	salida	1	Venta automÃ¡tica ID: 197	\N	2026-11-15 16:17:50.366609
+13	3	salida	4	Venta automÃ¡tica ID: 198	\N	2026-11-15 16:21:07.691158
+14	8	salida	100	Venta automÃ¡tica ID: 199	\N	2026-11-15 16:21:45.344414
+15	3	salida	1	Venta automÃ¡tica ID: 200	\N	2026-11-15 16:22:08.58719
+16	8	salida	1	Venta automÃ¡tica ID: 201	\N	2026-11-15 16:22:46.674566
+17	1	salida	200	Venta automÃ¡tica ID: 201	\N	2026-11-15 16:22:46.674566
+18	8	salida	9	Venta automÃ¡tica ID: 202	\N	2026-11-15 16:25:11.374224
+19	8	salida	90	Venta automÃ¡tica ID: 203	\N	2026-11-15 16:25:37.829406
+20	3	salida	5	Venta automÃ¡tica ID: 204	\N	2026-11-15 16:26:05.405462
+21	8	salida	300	Venta automÃ¡tica ID: 205	\N	2026-11-15 16:26:35.99755
+22	3	salida	90	Venta automÃ¡tica ID: 206	\N	2026-11-15 16:27:02.283948
+23	8	salida	1	Venta automÃ¡tica ID: 207	\N	2026-11-15 16:28:59.530413
+24	8	salida	199	Venta automÃ¡tica ID: 208	\N	2026-11-15 16:29:31.303275
+25	8	salida	2	Venta automÃ¡tica ID: 209	\N	2026-11-15 16:45:29.857558
+26	8	salida	2	Venta automÃ¡tica ID: 210	\N	2026-11-15 16:50:59.547467
+27	8	salida	2	Venta automÃ¡tica ID: 211	\N	2026-11-15 16:51:21.85553
+28	8	salida	1	Venta automÃ¡tica ID: 212	\N	2026-11-15 16:51:45.637508
 \.
 
 
@@ -2646,7 +2646,7 @@ COPY public.movimiento_inventario (id_movimiento, id_inventario, tipo_movimiento
 --
 
 COPY public.oferta (id_oferta, nombre_oferta, descripcion, porcentaje_descuento, fecha_inicio, fecha_fin, activo, created_at, updated_at, created_by, updated_by) FROM stdin;
-5	Descuento Invierno	20% de descuento en analgésicos	30.00	2026-09-21	2026-10-21	t	2026-09-21 10:53:21.096338	2026-09-30 17:36:40.833167	1	\N
+5	Descuento Invierno	20% de descuento en analgÃ©sicos	30.00	2026-09-21	2026-10-21	t	2026-09-21 10:53:21.096338	2026-09-30 17:36:40.833167	1	\N
 7	Descuento Verano	oferta	50.00	2026-09-29	2026-10-30	t	2026-09-30 18:44:22.03118	2026-10-05 02:32:25.514259	1	\N
 8	ofertirta	oferton	25.00	2026-10-05	2026-10-10	t	2026-09-30 18:47:08.028709	2026-10-05 02:38:48.271064	1	\N
 9	ofertita	oferta de cosas	10.00	2026-10-08	2026-10-08	t	2026-10-08 17:59:39.756347	2026-10-08 17:59:39.756347	1	\N
@@ -2797,7 +2797,7 @@ COPY public.permiso (id_permiso, nombre, accion, descripcion) FROM stdin;
 --
 
 COPY public.persona (id_persona, ci, nombre_completo, telefono, email, fecha_registro) FROM stdin;
-1	90000001	Roberto Gómez	+591 74444444	roberto@email.com	2026-10-08 16:45:29.132324
+1	90000001	Roberto GÃ³mez	+591 74444444	roberto@email.com	2026-10-08 16:45:29.132324
 2	90000002	Carmen Rivero	+591 75555555	carmen@email.com	2026-10-08 16:45:29.132324
 4	DEMO-CLIENTE	Cliente Demo	+591 70000000	cliente@farmacia.com	2026-10-25 22:00:06.831859
 6	99999999	Cliente App Movil	70000000	clienteapp@farmacia.com	2026-10-27 15:25:51.847746
@@ -2811,11 +2811,11 @@ COPY public.persona (id_persona, ci, nombre_completo, telefono, email, fecha_reg
 --
 
 COPY public.principio_activo (id_principio_activo, nombre, descripcion, requiere_control_especial, activo) FROM stdin;
-1	Paracetamol	Analgésico y antipirético.	f	t
+1	Paracetamol	AnalgÃ©sico y antipirÃ©tico.	f	t
 2	Ibuprofeno	Antiinflamatorio no esteroideo.	f	t
-3	Amoxicilina	Antibiótico betalactámico.	t	t
-4	Omeprazol	Inhibidor de la secreción ácida gástrica.	f	t
-5	Dipirona	Analgésico y antipirético.	f	t
+3	Amoxicilina	AntibiÃ³tico betalactÃ¡mico.	t	t
+4	Omeprazol	Inhibidor de la secreciÃ³n Ã¡cida gÃ¡strica.	f	t
+5	Dipirona	AnalgÃ©sico y antipirÃ©tico.	f	t
 \.
 
 
@@ -2826,9 +2826,9 @@ COPY public.principio_activo (id_principio_activo, nombre, descripcion, requiere
 --
 
 COPY public.proveedor (id_proveedor, nombre_empresa, contacto_nombre, contacto_telefono, contacto_email, acepta_devoluciones, frecuencia_visita, fecha_registro, activo) FROM stdin;
-1	Distribuidora Farmacéutica Yacuiba SRL	Carlos Méndez	+591 71234567	carlos@farmayacuiba.com	t	semanal	2026-10-08 16:45:29.132324	t
-2	FarmaBolivia Distribuciones	María López	+591 72345678	maria@farmabolivia.com	t	quincenal	2026-10-08 16:45:29.132324	t
-3	Droguería Santa Cruz S.A.	Esteban Hurtado	+591 73456789	ventas@drogueriasc.com	t	mensual	2026-10-08 16:45:29.132324	t
+1	Distribuidora FarmacÃ©utica Yacuiba SRL	Carlos MÃ©ndez	+591 71234567	carlos@farmayacuiba.com	t	semanal	2026-10-08 16:45:29.132324	t
+2	FarmaBolivia Distribuciones	MarÃ­a LÃ³pez	+591 72345678	maria@farmabolivia.com	t	quincenal	2026-10-08 16:45:29.132324	t
+3	DroguerÃ­a Santa Cruz S.A.	Esteban Hurtado	+591 73456789	ventas@drogueriasc.com	t	mensual	2026-10-08 16:45:29.132324	t
 \.
 
 
@@ -2851,9 +2851,9 @@ COPY public.receta_medica (id_receta, id_cliente, numero_receta, medico_prescrip
 
 COPY public.rol (id_rol, nombre, descripcion, activo) FROM stdin;
 1	Administrador	Acceso general.	t
-2	Regente	Gestión de recetas y atención farmacéutica.	t
-3	Vendedor	Gestión de ventas.	t
-4	Almacenero	Gestión de inventario.	t
+2	Regente	GestiÃ³n de recetas y atenciÃ³n farmacÃ©utica.	t
+3	Vendedor	GestiÃ³n de ventas.	t
+4	Almacenero	GestiÃ³n de inventario.	t
 \.
 
 
