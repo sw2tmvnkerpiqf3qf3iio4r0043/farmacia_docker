@@ -9,7 +9,6 @@ services:
       POSTGRES_USER: *db-user
       POSTGRES_PASSWORD: *db-password
       POSTGRES_DB: *db-name
-      PGDATA: /var/lib/postgresql/18/docker
     volumes:
       - pgdata18:/var/lib/postgresql
       - ./base/respaldo_farmacia.sql:/docker-entrypoint-initdb.d/01_respaldo.sql:ro
