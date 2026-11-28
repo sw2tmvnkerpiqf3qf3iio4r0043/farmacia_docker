@@ -53,7 +53,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_asignar_lote_fefo() OWNER TO postgres;
+ALTER FUNCTION public.fn_asignar_lote_fefo() OWNER TO admin;
 
 --
 -- TOC entry 279 (class 1255 OID 16389)
