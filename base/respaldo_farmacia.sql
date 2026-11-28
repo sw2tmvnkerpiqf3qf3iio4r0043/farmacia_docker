@@ -88,7 +88,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_inventario_sync_stock_medicamento() OWNER TO postgres;
+ALTER FUNCTION public.fn_inventario_sync_stock_medicamento() OWNER TO admin;
 
 --
 -- TOC entry 280 (class 1255 OID 16390)
@@ -112,7 +112,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_recalcular_total_venta() OWNER TO postgres;
+ALTER FUNCTION public.fn_recalcular_total_venta() OWNER TO admin;
 
 --
 -- TOC entry 281 (class 1255 OID 16391)
@@ -179,7 +179,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_registrar_salida_automatica() OWNER TO postgres;
+ALTER FUNCTION public.fn_registrar_salida_automatica() OWNER TO admin;
 
 --
 -- TOC entry 282 (class 1255 OID 16392)
@@ -222,7 +222,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_validar_lote_venta() OWNER TO postgres;
+ALTER FUNCTION public.fn_validar_lote_venta() OWNER TO admin;
 
 --
 -- TOC entry 287 (class 1255 OID 16393)
@@ -264,7 +264,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_validar_pago_no_exceder() OWNER TO postgres;
+ALTER FUNCTION public.fn_validar_pago_no_exceder() OWNER TO admin;
 
 --
 -- TOC entry 295 (class 1255 OID 16394)
@@ -310,7 +310,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_venta_asignar_lote_fefo() OWNER TO postgres;
+ALTER FUNCTION public.fn_venta_asignar_lote_fefo() OWNER TO admin;
 
 --
 -- TOC entry 296 (class 1255 OID 16395)
@@ -326,7 +326,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_venta_bloquear_detalle_update() OWNER TO postgres;
+ALTER FUNCTION public.fn_venta_bloquear_detalle_update() OWNER TO admin;
 
 --
 -- TOC entry 297 (class 1255 OID 16396)
@@ -342,7 +342,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_venta_bloquear_pago_delete() OWNER TO postgres;
+ALTER FUNCTION public.fn_venta_bloquear_pago_delete() OWNER TO admin;
 
 --
 -- TOC entry 298 (class 1255 OID 16397)
@@ -403,7 +403,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_venta_descontar_stock() OWNER TO postgres;
+ALTER FUNCTION public.fn_venta_descontar_stock() OWNER TO admin;
 
 --
 -- TOC entry 299 (class 1255 OID 16398)
@@ -427,7 +427,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_venta_recalcular_total() OWNER TO postgres;
+ALTER FUNCTION public.fn_venta_recalcular_total() OWNER TO admin;
 
 --
 -- TOC entry 300 (class 1255 OID 16399)
@@ -481,7 +481,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_venta_validar_alergias() OWNER TO postgres;
+ALTER FUNCTION public.fn_venta_validar_alergias() OWNER TO admin;
 
 --
 -- TOC entry 301 (class 1255 OID 16400)
@@ -550,7 +550,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_venta_validar_cierre() OWNER TO postgres;
+ALTER FUNCTION public.fn_venta_validar_cierre() OWNER TO admin;
 
 --
 -- TOC entry 302 (class 1255 OID 16401)
@@ -592,7 +592,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_venta_validar_lote() OWNER TO postgres;
+ALTER FUNCTION public.fn_venta_validar_lote() OWNER TO admin;
 
 --
 -- TOC entry 303 (class 1255 OID 16402)
@@ -643,7 +643,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_venta_validar_pago_no_exceder() OWNER TO postgres;
+ALTER FUNCTION public.fn_venta_validar_pago_no_exceder() OWNER TO admin;
 
 --
 -- TOC entry 304 (class 1255 OID 16403)
@@ -686,7 +686,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_venta_validar_pago_operacion() OWNER TO postgres;
+ALTER FUNCTION public.fn_venta_validar_pago_operacion() OWNER TO admin;
 
 --
 -- TOC entry 305 (class 1255 OID 16404)
@@ -781,7 +781,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.fn_venta_validar_receta() OWNER TO postgres;
+ALTER FUNCTION public.fn_venta_validar_receta() OWNER TO admin;
 
 SET default_tablespace = '';
 
@@ -800,7 +800,7 @@ CREATE TABLE public.alergia (
 );
 
 
-ALTER TABLE public.alergia OWNER TO postgres;
+ALTER TABLE public.alergia OWNER TO admin;
 
 --
 -- TOC entry 220 (class 1259 OID 16414)
@@ -816,7 +816,7 @@ CREATE SEQUENCE public.alergia_id_alergia_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.alergia_id_alergia_seq OWNER TO postgres;
+ALTER SEQUENCE public.alergia_id_alergia_seq OWNER TO admin;
 
 --
 -- TOC entry 5441 (class 0 OID 0)
@@ -838,7 +838,7 @@ CREATE TABLE public.alergia_principio_activo (
 );
 
 
-ALTER TABLE public.alergia_principio_activo OWNER TO postgres;
+ALTER TABLE public.alergia_principio_activo OWNER TO admin;
 
 --
 -- TOC entry 222 (class 1259 OID 16420)
@@ -857,7 +857,7 @@ CREATE TABLE public.categoria (
 );
 
 
-ALTER TABLE public.categoria OWNER TO postgres;
+ALTER TABLE public.categoria OWNER TO admin;
 
 --
 -- TOC entry 223 (class 1259 OID 16434)
@@ -873,7 +873,7 @@ CREATE SEQUENCE public.categoria_id_categoria_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.categoria_id_categoria_seq OWNER TO postgres;
+ALTER SEQUENCE public.categoria_id_categoria_seq OWNER TO admin;
 
 --
 -- TOC entry 5442 (class 0 OID 0)
@@ -899,7 +899,7 @@ CREATE TABLE public.cliente (
 );
 
 
-ALTER TABLE public.cliente OWNER TO postgres;
+ALTER TABLE public.cliente OWNER TO admin;
 
 --
 -- TOC entry 225 (class 1259 OID 16446)
@@ -916,7 +916,7 @@ CREATE TABLE public.cliente_alergia (
 );
 
 
-ALTER TABLE public.cliente_alergia OWNER TO postgres;
+ALTER TABLE public.cliente_alergia OWNER TO admin;
 
 --
 -- TOC entry 226 (class 1259 OID 16458)
@@ -932,7 +932,7 @@ CREATE SEQUENCE public.cliente_id_cliente_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.cliente_id_cliente_seq OWNER TO postgres;
+ALTER SEQUENCE public.cliente_id_cliente_seq OWNER TO admin;
 
 --
 -- TOC entry 5443 (class 0 OID 0)
@@ -962,7 +962,7 @@ CREATE TABLE public.compra (
 );
 
 
-ALTER TABLE public.compra OWNER TO postgres;
+ALTER TABLE public.compra OWNER TO admin;
 
 --
 -- TOC entry 228 (class 1259 OID 16475)
@@ -978,7 +978,7 @@ CREATE SEQUENCE public.compra_id_compra_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.compra_id_compra_seq OWNER TO postgres;
+ALTER SEQUENCE public.compra_id_compra_seq OWNER TO admin;
 
 --
 -- TOC entry 5444 (class 0 OID 0)
@@ -1008,7 +1008,7 @@ CREATE TABLE public.detalle_compra (
 );
 
 
-ALTER TABLE public.detalle_compra OWNER TO postgres;
+ALTER TABLE public.detalle_compra OWNER TO admin;
 
 --
 -- TOC entry 230 (class 1259 OID 16488)
@@ -1024,7 +1024,7 @@ CREATE SEQUENCE public.detalle_compra_id_detalle_compra_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.detalle_compra_id_detalle_compra_seq OWNER TO postgres;
+ALTER SEQUENCE public.detalle_compra_id_detalle_compra_seq OWNER TO admin;
 
 --
 -- TOC entry 5445 (class 0 OID 0)
@@ -1054,7 +1054,7 @@ CREATE TABLE public.detalle_receta (
 );
 
 
-ALTER TABLE public.detalle_receta OWNER TO postgres;
+ALTER TABLE public.detalle_receta OWNER TO admin;
 
 --
 -- TOC entry 232 (class 1259 OID 16503)
@@ -1070,7 +1070,7 @@ CREATE SEQUENCE public.detalle_receta_id_detalle_receta_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.detalle_receta_id_detalle_receta_seq OWNER TO postgres;
+ALTER SEQUENCE public.detalle_receta_id_detalle_receta_seq OWNER TO admin;
 
 --
 -- TOC entry 5446 (class 0 OID 0)
@@ -1107,7 +1107,7 @@ CREATE TABLE public.detalle_venta (
 );
 
 
-ALTER TABLE public.detalle_venta OWNER TO postgres;
+ALTER TABLE public.detalle_venta OWNER TO admin;
 
 --
 -- TOC entry 234 (class 1259 OID 16524)
@@ -1123,7 +1123,7 @@ CREATE SEQUENCE public.detalle_venta_id_detalle_venta_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.detalle_venta_id_detalle_venta_seq OWNER TO postgres;
+ALTER SEQUENCE public.detalle_venta_id_detalle_venta_seq OWNER TO admin;
 
 --
 -- TOC entry 5447 (class 0 OID 0)
@@ -1151,7 +1151,7 @@ CREATE TABLE public.empleado (
 );
 
 
-ALTER TABLE public.empleado OWNER TO postgres;
+ALTER TABLE public.empleado OWNER TO admin;
 
 --
 -- TOC entry 236 (class 1259 OID 16539)
@@ -1167,7 +1167,7 @@ CREATE SEQUENCE public.empleado_id_empleado_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.empleado_id_empleado_seq OWNER TO postgres;
+ALTER SEQUENCE public.empleado_id_empleado_seq OWNER TO admin;
 
 --
 -- TOC entry 5448 (class 0 OID 0)
@@ -1197,7 +1197,7 @@ CREATE TABLE public.inventario (
 );
 
 
-ALTER TABLE public.inventario OWNER TO postgres;
+ALTER TABLE public.inventario OWNER TO admin;
 
 --
 -- TOC entry 238 (class 1259 OID 16555)
@@ -1213,7 +1213,7 @@ CREATE SEQUENCE public.inventario_id_inventario_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.inventario_id_inventario_seq OWNER TO postgres;
+ALTER SEQUENCE public.inventario_id_inventario_seq OWNER TO admin;
 
 --
 -- TOC entry 5449 (class 0 OID 0)
@@ -1246,7 +1246,7 @@ CREATE TABLE public.lote_medicamento (
 );
 
 
-ALTER TABLE public.lote_medicamento OWNER TO postgres;
+ALTER TABLE public.lote_medicamento OWNER TO admin;
 
 --
 -- TOC entry 240 (class 1259 OID 16574)
@@ -1262,7 +1262,7 @@ CREATE SEQUENCE public.lote_medicamento_id_lote_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.lote_medicamento_id_lote_seq OWNER TO postgres;
+ALTER SEQUENCE public.lote_medicamento_id_lote_seq OWNER TO admin;
 
 --
 -- TOC entry 5450 (class 0 OID 0)
@@ -1300,7 +1300,7 @@ CREATE TABLE public.medicamento (
 );
 
 
-ALTER TABLE public.medicamento OWNER TO postgres;
+ALTER TABLE public.medicamento OWNER TO admin;
 
 --
 -- TOC entry 242 (class 1259 OID 16592)
@@ -1316,7 +1316,7 @@ CREATE SEQUENCE public.medicamento_id_medicamento_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.medicamento_id_medicamento_seq OWNER TO postgres;
+ALTER SEQUENCE public.medicamento_id_medicamento_seq OWNER TO admin;
 
 --
 -- TOC entry 5451 (class 0 OID 0)
@@ -1340,7 +1340,7 @@ CREATE TABLE public.medicamento_principio_activo (
 );
 
 
-ALTER TABLE public.medicamento_principio_activo OWNER TO postgres;
+ALTER TABLE public.medicamento_principio_activo OWNER TO admin;
 
 --
 -- TOC entry 244 (class 1259 OID 16598)
@@ -1354,7 +1354,7 @@ CREATE TABLE public.metodo_pago (
 );
 
 
-ALTER TABLE public.metodo_pago OWNER TO postgres;
+ALTER TABLE public.metodo_pago OWNER TO admin;
 
 --
 -- TOC entry 245 (class 1259 OID 16605)
@@ -1370,7 +1370,7 @@ CREATE SEQUENCE public.metodo_pago_id_metodo_pago_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.metodo_pago_id_metodo_pago_seq OWNER TO postgres;
+ALTER SEQUENCE public.metodo_pago_id_metodo_pago_seq OWNER TO admin;
 
 --
 -- TOC entry 5452 (class 0 OID 0)
@@ -1399,7 +1399,7 @@ CREATE TABLE public.movimiento_inventario (
 );
 
 
-ALTER TABLE public.movimiento_inventario OWNER TO postgres;
+ALTER TABLE public.movimiento_inventario OWNER TO admin;
 
 --
 -- TOC entry 247 (class 1259 OID 16620)
@@ -1415,7 +1415,7 @@ CREATE SEQUENCE public.movimiento_inventario_id_movimiento_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.movimiento_inventario_id_movimiento_seq OWNER TO postgres;
+ALTER SEQUENCE public.movimiento_inventario_id_movimiento_seq OWNER TO admin;
 
 --
 -- TOC entry 5453 (class 0 OID 0)
@@ -1446,7 +1446,7 @@ CREATE TABLE public.oferta (
 );
 
 
-ALTER TABLE public.oferta OWNER TO postgres;
+ALTER TABLE public.oferta OWNER TO admin;
 
 --
 -- TOC entry 249 (class 1259 OID 16632)
@@ -1462,7 +1462,7 @@ CREATE SEQUENCE public.oferta_id_oferta_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.oferta_id_oferta_seq OWNER TO postgres;
+ALTER SEQUENCE public.oferta_id_oferta_seq OWNER TO admin;
 
 --
 -- TOC entry 5454 (class 0 OID 0)
@@ -1486,7 +1486,7 @@ CREATE TABLE public.oferta_medicamento (
 );
 
 
-ALTER TABLE public.oferta_medicamento OWNER TO postgres;
+ALTER TABLE public.oferta_medicamento OWNER TO admin;
 
 --
 -- TOC entry 251 (class 1259 OID 16638)
@@ -1502,7 +1502,7 @@ CREATE SEQUENCE public.oferta_medicamento_id_oferta_medicamento_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.oferta_medicamento_id_oferta_medicamento_seq OWNER TO postgres;
+ALTER SEQUENCE public.oferta_medicamento_id_oferta_medicamento_seq OWNER TO admin;
 
 --
 -- TOC entry 5455 (class 0 OID 0)
@@ -1531,7 +1531,7 @@ CREATE TABLE public.pago (
 );
 
 
-ALTER TABLE public.pago OWNER TO postgres;
+ALTER TABLE public.pago OWNER TO admin;
 
 --
 -- TOC entry 253 (class 1259 OID 16652)
@@ -1547,7 +1547,7 @@ CREATE SEQUENCE public.pago_id_pago_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.pago_id_pago_seq OWNER TO postgres;
+ALTER SEQUENCE public.pago_id_pago_seq OWNER TO admin;
 
 --
 -- TOC entry 5456 (class 0 OID 0)
@@ -1571,7 +1571,7 @@ CREATE TABLE public.permiso (
 );
 
 
-ALTER TABLE public.permiso OWNER TO postgres;
+ALTER TABLE public.permiso OWNER TO admin;
 
 --
 -- TOC entry 255 (class 1259 OID 16661)
@@ -1587,7 +1587,7 @@ CREATE SEQUENCE public.permiso_id_permiso_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.permiso_id_permiso_seq OWNER TO postgres;
+ALTER SEQUENCE public.permiso_id_permiso_seq OWNER TO admin;
 
 --
 -- TOC entry 5457 (class 0 OID 0)
@@ -1613,7 +1613,7 @@ CREATE TABLE public.persona (
 );
 
 
-ALTER TABLE public.persona OWNER TO postgres;
+ALTER TABLE public.persona OWNER TO admin;
 
 --
 -- TOC entry 257 (class 1259 OID 16671)
@@ -1629,7 +1629,7 @@ CREATE SEQUENCE public.persona_id_persona_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.persona_id_persona_seq OWNER TO postgres;
+ALTER SEQUENCE public.persona_id_persona_seq OWNER TO admin;
 
 --
 -- TOC entry 5458 (class 0 OID 0)
@@ -1654,7 +1654,7 @@ CREATE TABLE public.principio_activo (
 );
 
 
-ALTER TABLE public.principio_activo OWNER TO postgres;
+ALTER TABLE public.principio_activo OWNER TO admin;
 
 --
 -- TOC entry 259 (class 1259 OID 16683)
@@ -1670,7 +1670,7 @@ CREATE SEQUENCE public.principio_activo_id_principio_activo_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.principio_activo_id_principio_activo_seq OWNER TO postgres;
+ALTER SEQUENCE public.principio_activo_id_principio_activo_seq OWNER TO admin;
 
 --
 -- TOC entry 5459 (class 0 OID 0)
@@ -1699,7 +1699,7 @@ CREATE TABLE public.proveedor (
 );
 
 
-ALTER TABLE public.proveedor OWNER TO postgres;
+ALTER TABLE public.proveedor OWNER TO admin;
 
 --
 -- TOC entry 261 (class 1259 OID 16699)
@@ -1715,7 +1715,7 @@ CREATE SEQUENCE public.proveedor_id_proveedor_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.proveedor_id_proveedor_seq OWNER TO postgres;
+ALTER SEQUENCE public.proveedor_id_proveedor_seq OWNER TO admin;
 
 --
 -- TOC entry 5460 (class 0 OID 0)
@@ -1746,7 +1746,7 @@ CREATE TABLE public.receta_medica (
 );
 
 
-ALTER TABLE public.receta_medica OWNER TO postgres;
+ALTER TABLE public.receta_medica OWNER TO admin;
 
 --
 -- TOC entry 263 (class 1259 OID 16717)
@@ -1762,7 +1762,7 @@ CREATE SEQUENCE public.receta_medica_id_receta_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.receta_medica_id_receta_seq OWNER TO postgres;
+ALTER SEQUENCE public.receta_medica_id_receta_seq OWNER TO admin;
 
 --
 -- TOC entry 5461 (class 0 OID 0)
@@ -1786,7 +1786,7 @@ CREATE TABLE public.rol (
 );
 
 
-ALTER TABLE public.rol OWNER TO postgres;
+ALTER TABLE public.rol OWNER TO admin;
 
 --
 -- TOC entry 265 (class 1259 OID 16727)
@@ -1802,7 +1802,7 @@ CREATE SEQUENCE public.rol_id_rol_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.rol_id_rol_seq OWNER TO postgres;
+ALTER SEQUENCE public.rol_id_rol_seq OWNER TO admin;
 
 --
 -- TOC entry 5462 (class 0 OID 0)
@@ -1824,7 +1824,7 @@ CREATE TABLE public.rol_permiso (
 );
 
 
-ALTER TABLE public.rol_permiso OWNER TO postgres;
+ALTER TABLE public.rol_permiso OWNER TO admin;
 
 --
 -- TOC entry 267 (class 1259 OID 16733)
@@ -1842,7 +1842,7 @@ CREATE TABLE public.sucursal (
 );
 
 
-ALTER TABLE public.sucursal OWNER TO postgres;
+ALTER TABLE public.sucursal OWNER TO admin;
 
 --
 -- TOC entry 268 (class 1259 OID 16742)
@@ -1858,7 +1858,7 @@ CREATE SEQUENCE public.sucursal_id_sucursal_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.sucursal_id_sucursal_seq OWNER TO postgres;
+ALTER SEQUENCE public.sucursal_id_sucursal_seq OWNER TO admin;
 
 --
 -- TOC entry 5463 (class 0 OID 0)
@@ -1886,7 +1886,7 @@ CREATE TABLE public.ubicacion_inventario (
 );
 
 
-ALTER TABLE public.ubicacion_inventario OWNER TO postgres;
+ALTER TABLE public.ubicacion_inventario OWNER TO admin;
 
 --
 -- TOC entry 270 (class 1259 OID 16753)
@@ -1902,7 +1902,7 @@ CREATE SEQUENCE public.ubicacion_inventario_id_ubicacion_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.ubicacion_inventario_id_ubicacion_seq OWNER TO postgres;
+ALTER SEQUENCE public.ubicacion_inventario_id_ubicacion_seq OWNER TO admin;
 
 --
 -- TOC entry 5464 (class 0 OID 0)
@@ -1929,7 +1929,7 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO postgres;
+ALTER TABLE public.users OWNER TO admin;
 
 --
 -- TOC entry 5465 (class 0 OID 0)
@@ -1954,7 +1954,7 @@ CREATE SEQUENCE public.users_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.users_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.users_id_seq OWNER TO admin;
 
 --
 -- TOC entry 5466 (class 0 OID 0)
@@ -1983,7 +1983,7 @@ CREATE TABLE public.usuario (
 );
 
 
-ALTER TABLE public.usuario OWNER TO postgres;
+ALTER TABLE public.usuario OWNER TO admin;
 
 --
 -- TOC entry 274 (class 1259 OID 16777)
@@ -1999,7 +1999,7 @@ CREATE SEQUENCE public.usuario_id_usuario_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.usuario_id_usuario_seq OWNER TO postgres;
+ALTER SEQUENCE public.usuario_id_usuario_seq OWNER TO admin;
 
 --
 -- TOC entry 5467 (class 0 OID 0)
@@ -2021,7 +2021,7 @@ CREATE TABLE public.usuario_rol (
 );
 
 
-ALTER TABLE public.usuario_rol OWNER TO postgres;
+ALTER TABLE public.usuario_rol OWNER TO admin;
 
 --
 -- TOC entry 276 (class 1259 OID 16783)
@@ -2041,7 +2041,7 @@ CREATE TABLE public.venta (
 );
 
 
-ALTER TABLE public.venta OWNER TO postgres;
+ALTER TABLE public.venta OWNER TO admin;
 
 --
 -- TOC entry 277 (class 1259 OID 16796)
@@ -2057,7 +2057,7 @@ CREATE SEQUENCE public.venta_id_venta_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.venta_id_venta_seq OWNER TO postgres;
+ALTER SEQUENCE public.venta_id_venta_seq OWNER TO admin;
 
 --
 -- TOC entry 5468 (class 0 OID 0)
